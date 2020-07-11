@@ -1,0 +1,3 @@
+Keystore: keystore.jks
+alias: detector
+all passwords: 1qaz2wsx
