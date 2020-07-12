@@ -169,8 +169,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnConnectFlir.setOnClickListener(v -> {
             Log.d("DetectorAcitivy", "Connecting Flir....");
             try {
-                flirManager.connectFlirOne();
-                //flirManager.connectSimulatorOne();
+                //flirManager.connectFlirOne();
+                flirManager.connectSimulatorOne();
             } catch(Exception ex) {
                 showOkDialog("Erro", ex.getMessage());
             }

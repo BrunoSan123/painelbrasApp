@@ -105,33 +105,6 @@ public class CameraHandler {
         camera.connect(identity, connectionStatusListener);
     }
 
-//    public boolean canCalibrate() {
-//        RemoteControl rc = camera.getRemoteControl();
-//        if (rc != null) {
-//            Calibration cal = rc.getCalibration();
-//            // can calibrate
-//            return cal != null;
-//        }
-//
-//        return false;
-//    }
-//
-//    public void calibrate(OnCompletion onCompletion) {
-//        RemoteControl rc = camera.getRemoteControl();
-//        if (rc != null) {
-//            Calibration cal = rc.getCalibration();
-//            if (cal != null) {
-//                Command nuc = cal.nuc();
-//                nuc.execute(onCompletion, new OnRemoteError() {
-//                    @Override
-//                    public void onRemoteError(ErrorCode errorCode) {
-//                        Log.e("CameraHandler", "Error calibrating: " + errorCode.toString());
-//                    }
-//                });
-//            }
-//        }
-//    }
-
     public void disconnect() {
         if (camera == null) {
             return;

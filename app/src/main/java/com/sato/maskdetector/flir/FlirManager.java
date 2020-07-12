@@ -76,9 +76,10 @@ public class FlirManager {
      */
     private void connect(Identity identity) {
         if (connectedIdentity != null) {
-            cameraHandler.stopDiscovery(discoveryStatusListener);
-            Log.d(TAG, "connect(), we only support one camera connection at the time");
-            return;
+            //cameraHandler.stopDiscovery(discoveryStatusListener);
+            cameraHandler.disconnect();
+//            Log.d(TAG, "connect(), we only support one camera connection at the time");
+//            return;
         }
 
         if (identity == null) {
