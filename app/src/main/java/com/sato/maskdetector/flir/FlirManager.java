@@ -27,11 +27,11 @@ public class FlirManager {
     private PermissionHandler permissionHandler;
     private CameraHandler cameraHandler;
     private Identity connectedIdentity = null;
-    private LinkedBlockingQueue<FrameDataHolder> framesBuffer = new LinkedBlockingQueue(21);
+//    private LinkedBlockingQueue<FrameDataHolder> framesBuffer = new LinkedBlockingQueue(21);
     private UsbPermissionHandler usbPermissionHandler = new UsbPermissionHandler();
     private DetectorActivity mainActivity;
-    private ImageView msxImage;
-    private ImageView photoImage;
+//    private ImageView msxImage;
+//    private ImageView photoImage;
     private double temperature;
 
     public FlirManager(Context context, DetectorActivity.ShowMessage showMessage, DetectorActivity mainActivity) {
@@ -76,10 +76,9 @@ public class FlirManager {
      */
     private void connect(Identity identity) {
         if (connectedIdentity != null) {
-            //cameraHandler.stopDiscovery(discoveryStatusListener);
-            cameraHandler.disconnect();
-//            Log.d(TAG, "connect(), we only support one camera connection at the time");
-//            return;
+            cameraHandler.stopDiscovery(discoveryStatusListener);
+            Log.d(TAG, "connect(), we only support one camera connection at the time");
+            return;
         }
 
         if (identity == null) {
@@ -125,14 +124,17 @@ public class FlirManager {
      * Disconnect to a camera
      */
     public void disconnect() {
+        if (connectedIdentity == null) {
+            return;
+        }
         updateConnectionText(connectedIdentity, "DISCONNECTING");
         connectedIdentity = null;
         Log.d(TAG, "disconnect() called with: connectedIdentity = [" + connectedIdentity + "]");
         new Thread(() -> {
             cameraHandler.disconnect();
-            mainActivity.runOnUiThread(() -> {
-                //updateConnectionText(null, "DISCONNECTED");
-            });
+//            mainActivity.runOnUiThread(() -> {
+//                updateConnectionText(null, "DISCONNECTED");
+//            });
         }).start();
     }
 
@@ -215,45 +217,55 @@ public class FlirManager {
             });
         }
     };
+
     private final CameraHandler.StreamDataListener streamDataListener = new CameraHandler.StreamDataListener() {
-
         @Override
-        public void images(FrameDataHolder dataHolder) {
-            mainActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    msxImage.setImageBitmap(dataHolder.msxBitmap);
-                    photoImage.setImageBitmap(dataHolder.dcBitmap);
-                }
-            });
-        }
-
-        @Override
-        public void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter) {
-            try {
-                framesBuffer.put(new FrameDataHolder(msxBitmap,dcBitmap));
-            } catch (InterruptedException e) {
-                //if interrupted while waiting for adding a new item in the queue
-                Log.e(TAG,"images(), unable to add incoming images to frames buffer, exception:"+e);
-            }
-
-            mainActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    //Log.d(TAG,"framebuffer size:"+framesBuffer.size());
-//                    FrameDataHolder poll = framesBuffer.poll();
-//                    msxImage.setImageBitmap(poll.msxBitmap);
-//                    photoImage.setImageBitmap(poll.dcBitmap);
-
-                    // Convert temp from kelvin to degree celsius
-                    temperature = tempAtCenter - 273.15;
-                    // Set temperature on View
-                    mainActivity.setTemperatureText(temperature);
-                    // testing
-                    //mainActivity.setTemperatureText(39.0);
-                }
+        public void streamTempData(double tempAtCenter) {
+            mainActivity.runOnUiThread(() -> {
+                temperature = tempAtCenter - 273.15;
+                mainActivity.setTemperatureText(temperature);
             });
         }
     };
+//    private final CameraHandler.StreamDataListener streamDataListener = new CameraHandler.StreamDataListener() {
+//
+//        @Override
+//        public void images(FrameDataHolder dataHolder) {
+//            mainActivity.runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    msxImage.setImageBitmap(dataHolder.msxBitmap);
+//                    photoImage.setImageBitmap(dataHolder.dcBitmap);
+//                }
+//            });
+//        }
+//
+//        @Override
+//        public void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter) {
+//            try {
+//                framesBuffer.put(new FrameDataHolder(msxBitmap,dcBitmap));
+//            } catch (InterruptedException e) {
+//                //if interrupted while waiting for adding a new item in the queue
+//                Log.e(TAG,"images(), unable to add incoming images to frames buffer, exception:"+e);
+//            }
+//
+//            mainActivity.runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    //Log.d(TAG,"framebuffer size:"+framesBuffer.size());
+////                    FrameDataHolder poll = framesBuffer.poll();
+////                    msxImage.setImageBitmap(poll.msxBitmap);
+////                    photoImage.setImageBitmap(poll.dcBitmap);
+//
+//                    // Convert temp from kelvin to degree celsius
+//                    temperature = tempAtCenter - 273.15;
+//                    // Set temperature on View
+//                    mainActivity.setTemperatureText(temperature);
+//                    // testing
+//                    //mainActivity.setTemperatureText(39.0);
+//                }
+//            });
+//        }
+//    };
 
 }

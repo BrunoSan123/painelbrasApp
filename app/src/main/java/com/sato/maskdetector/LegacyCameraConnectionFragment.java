@@ -160,7 +160,9 @@ public class LegacyCameraConnectionFragment extends Fragment {
         // the SurfaceTextureListener).
 
         if (textureView.isAvailable()) {
-            camera.startPreview();
+            if (camera != null) {
+                camera.startPreview();
+            }
         } else {
             textureView.setSurfaceTextureListener(surfaceTextureListener);
         }

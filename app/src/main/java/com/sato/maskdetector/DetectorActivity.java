@@ -169,8 +169,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnConnectFlir.setOnClickListener(v -> {
             Log.d("DetectorAcitivy", "Connecting Flir....");
             try {
-                //flirManager.connectFlirOne();
-                flirManager.connectSimulatorOne();
+                flirManager.connectFlirOne();
+                //flirManager.connectSimulatorOne();
             } catch(Exception ex) {
                 showOkDialog("Erro", ex.getMessage());
             }
@@ -411,12 +411,13 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         LOGGER.i("Preparing image " + currTimestamp + " for detection in bg thread.");
 
         rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
-        if (getCameraFacing() == CameraCharacteristics.LENS_FACING_FRONT) {
-            Matrix rgbMatrix = new Matrix();
-            rgbMatrix.postRotate(180);
-            newrgbFrameBitmap = Bitmap.createBitmap(rgbFrameBitmap, 0, 0, rgbFrameBitmap.getWidth(), rgbFrameBitmap.getHeight(), rgbMatrix, true);
-            rgbFrameBitmap = newrgbFrameBitmap;
-        }
+        // This is needed only for LegacyCamera. Since we forced Camera2, we don't need this anymore.
+//        if (getCameraFacing() == CameraCharacteristics.LENS_FACING_FRONT) {
+//            Matrix rgbMatrix = new Matrix();
+//            rgbMatrix.postRotate(180);
+//            newrgbFrameBitmap = Bitmap.createBitmap(rgbFrameBitmap, 0, 0, rgbFrameBitmap.getWidth(), rgbFrameBitmap.getHeight(), rgbMatrix, true);
+//            rgbFrameBitmap = newrgbFrameBitmap;
+//        }
         readyForNextImage();
 
         final Canvas canvas = new Canvas(croppedBitmap);

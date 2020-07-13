@@ -17,6 +17,8 @@ import com.flir.thermalsdk.androidsdk.image.BitmapAndroid;
 import com.flir.thermalsdk.image.Point;
 import com.flir.thermalsdk.image.ThermalImage;
 import com.flir.thermalsdk.image.fusion.FusionMode;
+import com.flir.thermalsdk.image.palettes.Palette;
+import com.flir.thermalsdk.image.palettes.PaletteManager;
 import com.flir.thermalsdk.live.Camera;
 import com.flir.thermalsdk.live.CommunicationInterface;
 import com.flir.thermalsdk.live.Identity;
@@ -64,9 +66,10 @@ public class CameraHandler {
     private StreamDataListener streamDataListener;
 
     public interface StreamDataListener {
-        void images(FrameDataHolder dataHolder);
+        //void images(FrameDataHolder dataHolder);
         //void images(Bitmap msxBitmap, Bitmap dcBitmap);
-        void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter);
+        //void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter);
+        void streamTempData(double tempAtCenter);
     }
 
     //Discovered FLIR cameras
@@ -216,33 +219,44 @@ public class CameraHandler {
             Log.d(TAG, "accept() called with: thermalImage = [" + thermalImage.getDescription() + "]");
             //Will be called on a non-ui thread,
             // extract information on the background thread and send the specific information to the UI thread
-
             //Get a bitmap with only IR data
-            Bitmap msxBitmap;
-            {
+//            Bitmap msxBitmap;
+//            {
+//                thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
+//                msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
+//            }
+//
+//            //Get a bitmap with the visual image, it might have different dimensions then the bitmap from THERMAL_ONLY
+//            Bitmap dcBitmap = BitmapAndroid.createBitmap(thermalImage.getFusion().getPhoto()).getBitMap();
+            try {
+                Palette palette = PaletteManager.getDefaultPalettes().get(0);
+                thermalImage.setPalette(palette);
                 thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
-                msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
-            }
+                Bitmap msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
 
-            //Get a bitmap with the visual image, it might have different dimensions then the bitmap from THERMAL_ONLY
-            Bitmap dcBitmap = BitmapAndroid.createBitmap(thermalImage.getFusion().getPhoto()).getBitMap();
-            int top = 1;
-            int left = 1;
-            int width = thermalImage.getWidth();
-            int height = thermalImage.getHeight() / 2;
-            double tempatd = 0.0;
-            // Get hottest point
-            for (int xi = left; xi < width; xi += 10) {
-                for (int yi = top; yi < height; yi += 10) {
-                    int xpt = xi;
-                    int ypt = yi;
+                int top = 1;
+                int left = 1;
+                int width = thermalImage.getWidth();
+                int height = thermalImage.getHeight() / 2;
+                double tempatd = 0.0;
+                // Get hottest point
+                for (int xi = left; xi < width; xi += 10) {
+                    for (int yi = top; yi < height; yi += 10) {
+                        int xpt = xi;
+                        int ypt = yi;
 
-                    Point pt1 = new Point(xpt, ypt);
-                    double thermpul = (thermalImage.getValueAt(pt1));
-                    if (thermpul > tempatd) {
-                        tempatd = thermpul;
+                        Point pt1 = new Point(xpt, ypt);
+                        double thermpul = (thermalImage.getValueAt(pt1));
+                        if (thermpul > tempatd) {
+                            tempatd = thermpul;
+                        }
                     }
                 }
+                Log.d(TAG,"adding images to cache");
+                //streamDataListener.images(msxBitmap,dcBitmap,tempatd);
+                streamDataListener.streamTempData(tempatd);
+            } catch(Exception ex) {
+                Log.e("Flir LOOP", ex.getMessage());
             }
 
 //            int centerX = thermalImage.getWidth() / 2;
@@ -250,8 +264,6 @@ public class CameraHandler {
 //            Point center = new Point(centerX, centerY);
 //            double temp = thermalImage.getValueAt(center);
 
-            Log.d(TAG,"adding images to cache");
-            streamDataListener.images(msxBitmap,dcBitmap,tempatd);
         }
     };
 }
