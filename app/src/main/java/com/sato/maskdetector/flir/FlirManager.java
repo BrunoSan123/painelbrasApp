@@ -227,45 +227,4 @@ public class FlirManager {
             });
         }
     };
-//    private final CameraHandler.StreamDataListener streamDataListener = new CameraHandler.StreamDataListener() {
-//
-//        @Override
-//        public void images(FrameDataHolder dataHolder) {
-//            mainActivity.runOnUiThread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    msxImage.setImageBitmap(dataHolder.msxBitmap);
-//                    photoImage.setImageBitmap(dataHolder.dcBitmap);
-//                }
-//            });
-//        }
-//
-//        @Override
-//        public void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter) {
-//            try {
-//                framesBuffer.put(new FrameDataHolder(msxBitmap,dcBitmap));
-//            } catch (InterruptedException e) {
-//                //if interrupted while waiting for adding a new item in the queue
-//                Log.e(TAG,"images(), unable to add incoming images to frames buffer, exception:"+e);
-//            }
-//
-//            mainActivity.runOnUiThread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    //Log.d(TAG,"framebuffer size:"+framesBuffer.size());
-////                    FrameDataHolder poll = framesBuffer.poll();
-////                    msxImage.setImageBitmap(poll.msxBitmap);
-////                    photoImage.setImageBitmap(poll.dcBitmap);
-//
-//                    // Convert temp from kelvin to degree celsius
-//                    temperature = tempAtCenter - 273.15;
-//                    // Set temperature on View
-//                    mainActivity.setTemperatureText(temperature);
-//                    // testing
-//                    //mainActivity.setTemperatureText(39.0);
-//                }
-//            });
-//        }
-//    };
-
 }

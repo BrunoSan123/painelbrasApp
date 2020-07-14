@@ -16,7 +16,6 @@
 package com.sato.maskdetector;
 
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -28,14 +27,12 @@ import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.hardware.camera2.CameraCharacteristics;
+import android.media.AudioManager;
 import android.media.ImageReader.OnImageAvailableListener;
-import android.media.MediaPlayer;
+import android.media.ToneGenerator;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
@@ -44,10 +41,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
@@ -57,8 +50,6 @@ import com.google.mlkit.vision.face.FaceDetectorOptions;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -132,7 +123,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private Timer stateCheckTimer;
 
     // Beep Media Player
-    MediaPlayer mediaPlayer;
+    //MediaPlayer mediaPlayer;
+    ToneGenerator dtmf;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,7 +135,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnBottomBar = findViewById(R.id.buttonBottom);
 
         // Beep
-        mediaPlayer = MediaPlayer.create(this, R.raw.beep);
+        //mediaPlayer = MediaPlayer.create(this, R.raw.beep);
+        dtmf = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
 
         // Real-time contour detection of multiple faces
         FaceDetectorOptions options =
@@ -216,11 +209,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         flirManager.stopDiscovery();
         flirManager.disconnect();
         if (tts != null) {
-            tts.stop();
-            tts.shutdown();
-        }
-        if (mediaPlayer != null) {
-            mediaPlayer.stop();
+            try {
+                tts.stop();
+                tts.shutdown();
+            } catch(Exception ex) {
+                Log.e("SPEECH PAUSE", ex.getMessage());
+            }
         }
         super.onPause();
     }
@@ -272,21 +266,24 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         if (temperature == 0) {
             return;
         }
-
-        if (!didSpeak && hasFace) {
-            speakTemp(temperature);
-            didSpeak = true;
+        try {
+            if (!didSpeak && hasFace) {
+                speakTemp(temperature);
+                didSpeak = true;
+            }
+        } catch(Exception ex) {
+            Log.e("SPEECH", ex.getMessage());
         }
     }
 
     void beepOnce() {
-        if (mediaPlayer == null || mediaPlayer.isPlaying()) {
-            return;
-        }
-
-        if (!didBeep && hasFace) {
-            mediaPlayer.start();
-            didBeep = true;
+        try {
+            if (!didBeep && hasFace) {
+                dtmf.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 300);
+                didBeep = true;
+            }
+        } catch (Exception ex) {
+            Log.e("BEEP", ex.getMessage());
         }
     }
 
@@ -509,22 +506,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         return matrix;
     }
     private void updateResults(long currTimestamp, final List<Classifier.Recognition> mappedRecognitions) {
-
         tracker.trackResults(mappedRecognitions, currTimestamp);
         trackingOverlay.postInvalidate();
         computingDetection = false;
-
-
-        runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        showFrameInfo(previewWidth + "x" + previewHeight);
-                        showCropInfo(croppedBitmap.getWidth() + "x" + croppedBitmap.getHeight());
-                        showInference(lastProcessingTimeMs + "ms");
-                    }
-                });
-
     }
 
     private void onFacesDetected(long currTimestamp, List<Face> faces) {
