@@ -15,10 +15,8 @@
  */
 package com.sato.maskdetector;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -43,7 +41,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.face.Face;
 import com.google.mlkit.vision.face.FaceDetection;
@@ -60,9 +57,7 @@ import java.util.TimerTask;
 
 import com.sato.maskdetector.env.*;
 import com.sato.maskdetector.customview.OverlayView;
-import com.sato.maskdetector.customview.OverlayView.DrawCallback;
 import com.sato.maskdetector.flir.FlirInterface;
-import com.sato.maskdetector.flir.FlirManager;
 import com.sato.maskdetector.tflite.*;
 import com.sato.maskdetector.tracking.MultiBoxTracker;
 
