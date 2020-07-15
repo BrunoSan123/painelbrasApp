@@ -1,11 +1,8 @@
 package com.sato.maskdetector.flir;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.util.Log;
-import android.widget.ImageView;
 import android.widget.Toast;
-
 import com.flir.thermalsdk.ErrorCode;
 import com.flir.thermalsdk.androidsdk.ThermalSdkAndroid;
 import com.flir.thermalsdk.androidsdk.live.connectivity.UsbPermissionHandler;
@@ -13,14 +10,11 @@ import com.flir.thermalsdk.live.CommunicationInterface;
 import com.flir.thermalsdk.live.Identity;
 import com.flir.thermalsdk.live.connectivity.ConnectionStatusListener;
 import com.flir.thermalsdk.live.discovery.DiscoveryEventListener;
-import com.flir.thermalsdk.live.remote.OnCompletion;
 import com.flir.thermalsdk.log.ThermalLog;
 import com.sato.maskdetector.BuildConfig;
 import com.sato.maskdetector.DetectorActivity;
 import com.sato.maskdetector.utility.PermissionHandler;
-import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class FlirManager {
     private static final String TAG = "FlirManager";
@@ -40,7 +34,7 @@ public class FlirManager {
         // Enable log if debug version
         ThermalLog.LogLevel enableLoggingInDebug = BuildConfig.DEBUG ? ThermalLog.LogLevel.DEBUG : ThermalLog.LogLevel.NONE;
         ThermalSdkAndroid.init(context, enableLoggingInDebug);
-        permissionHandler = new PermissionHandler(showMessage, this.mainActivity);
+        permissionHandler = new PermissionHandler(this.mainActivity);
         cameraHandler = new CameraHandler();
     }
 
@@ -223,7 +217,7 @@ public class FlirManager {
         public void streamTempData(double tempAtCenter) {
             mainActivity.runOnUiThread(() -> {
                 temperature = tempAtCenter - 273.15;
-                mainActivity.setTemperatureText(temperature);
+                mainActivity.setTemperature(temperature);
             });
         }
     };

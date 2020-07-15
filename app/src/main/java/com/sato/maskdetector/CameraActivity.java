@@ -99,7 +99,8 @@ public abstract class CameraActivity extends AppCompatActivity
     }
 
 
-
+    // Determine if FLIR should fix connection
+    protected boolean shouldFixFLIR = false;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -109,6 +110,7 @@ public abstract class CameraActivity extends AppCompatActivity
         Intent intent = getIntent();
         //useFacing = intent.getIntExtra(KEY_USE_FACING, CameraCharacteristics.LENS_FACING_FRONT);
         useFacing = intent.getIntExtra(KEY_USE_FACING, CameraCharacteristics.LENS_FACING_BACK);
+        shouldFixFLIR = intent.getBooleanExtra("shouldFixFLIR", false);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -139,11 +141,7 @@ public abstract class CameraActivity extends AppCompatActivity
                 new ViewTreeObserver.OnGlobalLayoutListener() {
                     @Override
                     public void onGlobalLayout() {
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
-                            gestureLayout.getViewTreeObserver().removeGlobalOnLayoutListener(this);
-                        } else {
-                            gestureLayout.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                        }
+                        gestureLayout.getViewTreeObserver().removeOnGlobalLayoutListener(this);
                         //                int width = bottomSheetLayout.getMeasuredWidth();
                         int height = gestureLayout.getMeasuredHeight();
 
@@ -217,6 +215,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
         intent.putExtra(KEY_USE_FACING, useFacing);
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        intent.putExtra("shouldFixFLIR", true);
 
         restartWith(intent);
 

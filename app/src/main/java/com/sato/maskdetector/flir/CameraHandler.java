@@ -118,6 +118,27 @@ public class CameraHandler {
         camera.disconnect();
     }
 
+    public void reconnect(Identity identity, ConnectionStatusListener connectionStatusListener) throws IOException {
+        if (camera != null) {
+            if (camera.isGrabbing()) {
+                camera.unsubscribeAllStreams();
+            }
+            camera.disconnect();
+        }
+        camera.connect(identity, connectionStatusListener);
+    }
+
+    public boolean isConnected() {
+        if (camera == null) {
+            return false;
+        }
+        return camera.isConnected();
+    }
+
+    public boolean isGrabbing() {
+        return camera.isGrabbing();
+    }
+
     /**
      * Start a stream of {@link ThermalImage}s images from a FLIR ONE or emulator
      */
@@ -193,6 +214,11 @@ public class CameraHandler {
         return null;
     }
 
+    private void withImage(Camera.Consumer<ThermalImage> functionToRun) {
+        camera.withImage(functionToRun);
+    }
+
+    @Deprecated
     private void withImage(ThermalImageStreamListener listener, Camera.Consumer<ThermalImage> functionToRun) {
         camera.withImage(listener, functionToRun);
     }
@@ -206,7 +232,8 @@ public class CameraHandler {
         public void onImageReceived() {
             //Will be called on a non-ui thread
             Log.d(TAG, "onImageReceived(), we got another ThermalImage");
-            withImage(this, handleIncomingImage);
+            //withImage(this, handleIncomingImage);
+            withImage(handleIncomingImage);
         }
     };
 
@@ -216,18 +243,7 @@ public class CameraHandler {
     private final Camera.Consumer<ThermalImage> handleIncomingImage = new Camera.Consumer<ThermalImage>() {
         @Override
         public void accept(ThermalImage thermalImage) {
-            Log.d(TAG, "accept() called with: thermalImage = [" + thermalImage.getDescription() + "]");
-            //Will be called on a non-ui thread,
-            // extract information on the background thread and send the specific information to the UI thread
-            //Get a bitmap with only IR data
-//            Bitmap msxBitmap;
-//            {
-//                thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
-//                msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
-//            }
-//
-//            //Get a bitmap with the visual image, it might have different dimensions then the bitmap from THERMAL_ONLY
-//            Bitmap dcBitmap = BitmapAndroid.createBitmap(thermalImage.getFusion().getPhoto()).getBitMap();
+            //Log.d(TAG, "accept() called with: thermalImage = [" + thermalImage.getDescription() + "]");
             try {
                 Palette palette = PaletteManager.getDefaultPalettes().get(0);
                 thermalImage.setPalette(palette);
@@ -242,28 +258,18 @@ public class CameraHandler {
                 // Get hottest point
                 for (int xi = left; xi < width; xi += 10) {
                     for (int yi = top; yi < height; yi += 10) {
-                        int xpt = xi;
-                        int ypt = yi;
-
-                        Point pt1 = new Point(xpt, ypt);
-                        double thermpul = (thermalImage.getValueAt(pt1));
+                        Point pt1 = new Point(xi, yi);
+                        double thermpul = thermalImage.getValueAt(pt1);
                         if (thermpul > tempatd) {
                             tempatd = thermpul;
                         }
                     }
                 }
-                Log.d(TAG,"adding images to cache");
-                //streamDataListener.images(msxBitmap,dcBitmap,tempatd);
+                //Log.d(TAG,"adding images to cache");
                 streamDataListener.streamTempData(tempatd);
             } catch(Exception ex) {
                 Log.e("Flir LOOP", ex.getMessage());
             }
-
-//            int centerX = thermalImage.getWidth() / 2;
-//            int centerY = thermalImage.getHeight() / 4;
-//            Point center = new Point(centerX, centerY);
-//            double temp = thermalImage.getValueAt(center);
-
         }
     };
 }

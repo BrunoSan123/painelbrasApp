@@ -15,6 +15,7 @@
  */
 package com.sato.maskdetector;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -23,6 +24,7 @@ import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -51,6 +53,9 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -58,6 +63,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
 import com.sato.maskdetector.customview.AutoFitTextureView;
 import com.sato.maskdetector.env.Logger;
 
@@ -99,13 +105,15 @@ public class CameraConnectionFragment extends Fragment {
                 public void onCaptureProgressed(
                         final CameraCaptureSession session,
                         final CaptureRequest request,
-                        final CaptureResult partialResult) {}
+                        final CaptureResult partialResult) {
+                }
 
                 @Override
                 public void onCaptureCompleted(
                         final CameraCaptureSession session,
                         final CaptureRequest request,
-                        final TotalCaptureResult result) {}
+                        final TotalCaptureResult result) {
+                }
             };
     /** ID of the current {@link CameraDevice}. */
     private String cameraId;
@@ -182,7 +190,8 @@ public class CameraConnectionFragment extends Fragment {
                 }
 
                 @Override
-                public void onSurfaceTextureUpdated(final SurfaceTexture texture) {}
+                public void onSurfaceTextureUpdated(final SurfaceTexture texture) {
+                }
             };
 
     private CameraConnectionFragment(
@@ -365,6 +374,16 @@ public class CameraConnectionFragment extends Fragment {
         try {
             if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
+            }
+            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
             }
             manager.openCamera(cameraId, stateCallback, backgroundHandler);
         } catch (final CameraAccessException e) {

@@ -10,11 +10,11 @@
 package com.sato.maskdetector.utility;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Process;
 import com.flir.thermalsdk.log.ThermalLog;
-import com.sato.maskdetector.DetectorActivity;
-
+import com.sato.maskdetector.MainActivityInterface;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 
@@ -45,9 +45,9 @@ import androidx.core.app.ActivityCompat;
  */
 public class PermissionHandler {
     private static final String TAG = "PermissionHandler";
-    private final DetectorActivity mainActivity;
+    private final MainActivityInterface mainActivity;
 
-    DetectorActivity.ShowMessage showMessage;
+    //DetectorActivity.ShowMessage showMessage;
 
     @VisibleForTesting
     static String[] PERMISSIONS_FOR_NW_DISCOVERY = {
@@ -73,8 +73,11 @@ public class PermissionHandler {
             Manifest.permission.ACCESS_FINE_LOCATION,
     };
 
-    public PermissionHandler(DetectorActivity.ShowMessage showMessage, DetectorActivity mainActivity) {
-        this.showMessage = showMessage;
+//    public PermissionHandler(DetectorActivity.ShowMessage showMessage, DetectorActivity mainActivity) {
+//        this.showMessage = showMessage;
+//        this.mainActivity = mainActivity;
+//    }
+    public PermissionHandler(MainActivityInterface mainActivity) {
         this.mainActivity = mainActivity;
     }
 
@@ -112,7 +115,7 @@ public class PermissionHandler {
      */
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (grantResults.length <= 0) {
-            showMessage.show("Permission request was canceled");
+            //showMessage.show("Permission request was canceled");
             return;
         }
         boolean permissionGranted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
@@ -122,10 +125,10 @@ public class PermissionHandler {
         // If request is cancelled, the result arrays are empty.
         if (permissionGranted) {
             // permission was granted, jippie!
-            showMessage.show(requestPermissionName + " permission was granted");
+            //showMessage.show(requestPermissionName + " permission was granted");
         } else {
             // permission denied,
-            showMessage.show(requestPermissionName + " permission was denied");
+            //showMessage.show(requestPermissionName + " permission was denied");
         }
         return;
     }
@@ -150,9 +153,10 @@ public class PermissionHandler {
      * */
     private void requestPermission(final String permission) {
         ThermalLog.d(TAG,"requestPermission(), permission:"+permission);
-        boolean permissionRationale = ActivityCompat.shouldShowRequestPermissionRationale(mainActivity, permission);
+        Activity activity = (Activity)mainActivity.getContext();
+        boolean permissionRationale = ActivityCompat.shouldShowRequestPermissionRationale(activity, permission);
         if (permissionRationale) {
-            showMessage.show("Please provide permission:"+permission);
+            //showMessage.show("Please provide permission:"+permission);
             // Show an explanation to the user *asynchronously* -- don't block
             // this thread waiting for the user's response! After the user
             // sees the explanation, try again to request the permission.
@@ -160,7 +164,7 @@ public class PermissionHandler {
             // No explanation needed; request the permission
             int requestCode = getRequestCode(permission);
             String[] permissions = {permission};
-            ActivityCompat.requestPermissions(mainActivity, permissions, requestCode);
+            ActivityCompat.requestPermissions(activity, permissions, requestCode);
         }
     }
 

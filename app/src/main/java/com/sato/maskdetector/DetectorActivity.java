@@ -15,7 +15,9 @@
  */
 package com.sato.maskdetector;
 
+import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -59,12 +61,13 @@ import java.util.TimerTask;
 import com.sato.maskdetector.env.*;
 import com.sato.maskdetector.customview.OverlayView;
 import com.sato.maskdetector.customview.OverlayView.DrawCallback;
+import com.sato.maskdetector.flir.FlirInterface;
 import com.sato.maskdetector.flir.FlirManager;
 import com.sato.maskdetector.tflite.*;
 import com.sato.maskdetector.tracking.MultiBoxTracker;
 
 
-public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
+public class DetectorActivity extends CameraActivity implements OnImageAvailableListener, MainActivityInterface {
     private static final Logger LOGGER = new Logger();
     // Face Mask
     private static final int TF_OD_API_INPUT_SIZE = 224;
@@ -99,7 +102,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     // here the face is cropped and drawn
     private Bitmap faceBmp = null;
     // Flir Manager
-    private FlirManager flirManager;
+    //private FlirManager flirManager;
+    private FlirInterface flirInterface;
     // Dynamic Widgets
     TextView tempView;
     Button btnConnectFlir;
@@ -125,6 +129,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     // Beep Media Player
     //MediaPlayer mediaPlayer;
     ToneGenerator dtmf;
+
+    //=====================================================================
+    // TODO: CONFIGURE AQUI O TIPO DE CAMERA A SER USADA: USB OU EMULADOR
+    //=====================================================================
+    FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
+    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,20 +163,22 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status != TextToSpeech.ERROR) {
                 tts.setLanguage(Locale.forLanguageTag("pt-BR"));
+                //tts.setSpeechRate(0.8f);
             }
         });
-        tts.setSpeechRate(0.8f);
 
         // Initialize Flir
-        flirManager = new FlirManager(this, showMessage, this);
+        //flirManager = new FlirManager(this, showMessage, this);
+        flirInterface = FlirInterface.getInstance(this, this);
         btnConnectFlir.setOnClickListener(v -> {
-            Log.d("DetectorAcitivy", "Connecting Flir....");
-            try {
-                flirManager.connectFlirOne();
-                //flirManager.connectSimulatorOne();
-            } catch(Exception ex) {
-                showOkDialog("Erro", ex.getMessage());
-            }
+            flirInterface.connect(cameraType);  // /|\ configure cameraType lá em cima
+            btnConnectFlir.setVisibility(View.INVISIBLE);
+//            try {
+//                //flirManager.connectFlirOne();
+//                flirManager.connectSimulatorOne();
+//            } catch(Exception ex) {
+//                showOkDialog("Erro", ex.getMessage());
+//            }
         });
 
         // reset
@@ -178,11 +190,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title);
         builder.setMessage(content);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Just dismiss
-            }
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Just dismiss
         });
         builder.create().show();
     }
@@ -190,24 +199,33 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     @Override
     public synchronized void onResume() {
         super.onResume();
-        flirManager.startDiscovery();
+        if (!flirInterface.isConnected() && !flirInterface.isDiscovering()) {
+            flirInterface.startDiscovery();
+            if (shouldFixFLIR) {
+                flirInterface.fixConnection(cameraType);
+            } else {
+                btnConnectFlir.setVisibility(View.VISIBLE);
+            }
+        }
+//        flirManager.startDiscovery();
         stateCheckTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        manageAlerts();
-                    }
-                });
+                runOnUiThread(() -> manageAlerts());
             }
         }, 0, 2000);
     }
 
     @Override
     public synchronized void onPause() {
-        flirManager.stopDiscovery();
-        flirManager.disconnect();
+//        flirManager.stopDiscovery();
+//        flirManager.disconnect();
+        if (flirInterface.isConnected()) {
+            flirInterface.disconnect();
+        }
+        if (flirInterface.isDiscovering()) {
+            flirInterface.stopDiscovery();
+        }
         if (tts != null) {
             try {
                 tts.stop();
@@ -219,15 +237,26 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         super.onPause();
     }
 
-    public void setTemperatureText(double temp) {
-        temperature = temp;
-        String tmpString = String.format("%sºC", precision.format(temp));
-        if (temp > 38.2) {
+    @Override
+    public void setTemperature(double temperature) {
+        this.temperature = temperature;
+        String tmpString = String.format("%sºC", precision.format(temperature));
+        if (temperature > 38.2) {
             tempIsHigh = true;
         } else {
             tempIsHigh = false;
         }
-        btnTopBar.setText(tmpString);
+        runOnUiThread(() -> btnTopBar.setText(tmpString));
+    }
+
+    @Override
+    public void showMessage(String message) {
+        // TODO: Implement this method
+    }
+
+    @Override
+    public Context getContext() {
+        return this;
     }
 
     private void manageAlerts() {
@@ -297,6 +326,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     }
 
     private void speakTemp(double temp) {
+        if (tts == null) {
+            return;
+        }
         if (!tts.isSpeaking()) {
             if (temp > 38.2) {
                 tts.speak("Temperatura alta.", TextToSpeech.QUEUE_FLUSH, null, "temp");
@@ -370,25 +402,16 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         cropToFrameTransform = new Matrix();
         frameToCropTransform.invert(cropToFrameTransform);
 
-        trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
-        trackingOverlay.addCallback(
-                new DrawCallback() {
-                    @Override
-                    public void drawCallback(final Canvas canvas) {
-                        String title = tracker.getFirstTrackedTitle();
+        trackingOverlay = findViewById(R.id.tracking_overlay);
+        trackingOverlay.addCallback(canvas -> {
+            String title = tracker.getFirstTrackedTitle();
 
-                        if (title.equals("mask")) {
-                            hasMask = true;
-                        } else {
-                            hasMask = false;
-                        }
-
-                        //tracker.draw(canvas);
-//                        if (isDebug()) {
-//                            tracker.drawDebug(canvas);
-//                        }
-                    }
-                });
+            if (title.equals("mask")) {
+                hasMask = true;
+            } else {
+                hasMask = false;
+            }
+        });
 
         tracker.setFrameConfiguration(previewWidth, previewHeight, sensorOrientation);
     }
@@ -426,27 +449,18 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         InputImage image = InputImage.fromBitmap(croppedBitmap, 0);
         faceDetector.process(image)
-            .addOnSuccessListener(new OnSuccessListener<List<Face>>() {
-                @Override
-                public void onSuccess(List<Face> faces) {
-                    if (faces.size() == 0) {
-                        // No faces detected
-                        hasFace = false;
-                        resetReadings();
-                        updateResults(currTimestamp, new LinkedList<>());
-                        return;
-                    }
-                    else {
-                        hasFace = true;
-                    }
-                    runInBackground(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                onFacesDetected(currTimestamp, faces);
-                            }
-                        });
+            .addOnSuccessListener(faces -> {
+                if (faces.size() == 0) {
+                    // No faces detected
+                    hasFace = false;
+                    resetReadings();
+                    updateResults(currTimestamp, new LinkedList<>());
+                    return;
                 }
+                else {
+                    hasFace = true;
+                }
+                runInBackground(() -> onFacesDetected(currTimestamp, faces));
             });
     }
 
@@ -458,6 +472,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     @Override
     protected Size getDesiredPreviewFrameSize() {
         return DESIRED_PREVIEW_SIZE;
+    }
+
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+
     }
 
     // Which detection model to use: by default uses Tensorflow Object Detection API frozen
