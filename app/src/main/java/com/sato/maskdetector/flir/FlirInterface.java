@@ -41,15 +41,20 @@ public class FlirInterface {
         return instance;
     }
 
-    private FlirInterface(Context context, MainActivityInterface activity) {
+    private FlirInterface(Context context, MainActivityInterface activityInterface) {
         this.context = context;
-        this.mainActivityInterface = activity;
+        this.mainActivityInterface = activityInterface;
 
         // Enable log if debug version
         //ThermalLog.LogLevel enableLoggingInDebug = BuildConfig.DEBUG ? ThermalLog.LogLevel.DEBUG : ThermalLog.LogLevel.NONE;
         ThermalSdkAndroid.init(context, ThermalLog.LogLevel.NONE);  // No log
-        permissionHandler = new PermissionHandler(activity);
+        permissionHandler = new PermissionHandler(activityInterface);
         cameraHandler = new CameraHandler();
+    }
+
+    public void updateContext(Context context, MainActivityInterface activityInterface) {
+        this.context = context;
+        this.mainActivityInterface = activityInterface;
     }
 
     public boolean isConnectionLost() {
@@ -63,7 +68,7 @@ public class FlirInterface {
     }
 
     public boolean isConnected() {
-        return connectedIdentity != null && cameraHandler.isConnected();
+        return connectedIdentity != null && cameraHandler.isConnected() && cameraHandler.isGrabbing();
     }
 
     public void startDiscovery() {

@@ -145,7 +145,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnBottomBar = findViewById(R.id.buttonBottom);
 
         // Beep
-        //mediaPlayer = MediaPlayer.create(this, R.raw.beep);
         dtmf = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
 
         // Real-time contour detection of multiple faces
@@ -173,12 +172,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnConnectFlir.setOnClickListener(v -> {
             flirInterface.connect(cameraType);  // /|\ configure cameraType lá em cima
             btnConnectFlir.setVisibility(View.INVISIBLE);
-//            try {
-//                //flirManager.connectFlirOne();
-//                flirManager.connectSimulatorOne();
-//            } catch(Exception ex) {
-//                showOkDialog("Erro", ex.getMessage());
-//            }
         });
 
         // reset
@@ -207,19 +200,25 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 btnConnectFlir.setVisibility(View.VISIBLE);
             }
         }
-//        flirManager.startDiscovery();
+        flirInterface.updateContext(this, this);
         stateCheckTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                runOnUiThread(() -> manageAlerts());
+                runOnUiThread(() -> {
+                    manageAlerts();
+                    // Check if connect button should be visible or not
+                    if (flirInterface.isConnected()) {
+                        btnConnectFlir.setVisibility(View.INVISIBLE);
+                    } else {
+                        btnConnectFlir.setVisibility(View.VISIBLE);
+                    }
+                });
             }
         }, 0, 2000);
     }
 
     @Override
     public synchronized void onPause() {
-//        flirManager.stopDiscovery();
-//        flirManager.disconnect();
         if (flirInterface.isConnected()) {
             flirInterface.disconnect();
         }
