@@ -14,7 +14,10 @@ import android.util.Log;
 
 import com.flir.thermalsdk.ErrorCode;
 import com.flir.thermalsdk.androidsdk.image.BitmapAndroid;
+import com.flir.thermalsdk.image.JavaImageBuffer;
 import com.flir.thermalsdk.image.Point;
+import com.flir.thermalsdk.image.Rectangle;
+import com.flir.thermalsdk.image.TemperatureUnit;
 import com.flir.thermalsdk.image.ThermalImage;
 import com.flir.thermalsdk.image.fusion.FusionMode;
 import com.flir.thermalsdk.image.palettes.Palette;
@@ -247,26 +250,36 @@ public class CameraHandler {
             try {
                 Palette palette = PaletteManager.getDefaultPalettes().get(0);
                 thermalImage.setPalette(palette);
+                thermalImage.setTemperatureUnit(TemperatureUnit.KELVIN);
+                thermalImage.getImageParameters().setEmissivity(0.95);
                 thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
-                Bitmap msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
+                //Bitmap msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
+                JavaImageBuffer thermalBuffer = thermalImage.getImage();
 
                 int top = 1;
                 int left = 1;
-                int width = thermalImage.getWidth();
-                int height = thermalImage.getHeight() / 2;
+                int right = thermalImage.getWidth() - 1;
+                int bottom = thermalImage.getHeight() - 1;
                 double tempatd = 0.0;
-                // Get hottest point
-                for (int xi = left; xi < width; xi += 10) {
-                    for (int yi = top; yi < height; yi += 10) {
-                        Point pt1 = new Point(xi, yi);
-                        double thermpul = thermalImage.getValueAt(pt1);
-                        if (thermpul > tempatd) {
-                            tempatd = thermpul;
-                        }
+                double[] temps = thermalImage.getValues(new Rectangle(left, top, right, bottom));
+                for (int i = 0; i < temps.length; i++) {
+                    if (temps[i] > tempatd) {
+                        tempatd = temps[i];
                     }
                 }
+                // Get hottest point
+//                for (int xi = left; xi < width; xi += 10) {
+//                    for (int yi = top; yi < height; yi += 10) {
+//                        Point pt1 = new Point(xi, yi);
+//                        double thermpul = thermalImage.getValueAt(pt1);
+//                        if (thermpul > tempatd) {
+//                            tempatd = thermpul;
+//                        }
+//                    }
+//                }
                 //Log.d(TAG,"adding images to cache");
-                streamDataListener.streamTempData(tempatd);
+                double kelvinToCelsius = tempatd - 273;
+                streamDataListener.streamTempData(kelvinToCelsius);
             } catch(Exception ex) {
                 Log.e("Flir LOOP", ex.getMessage());
             }

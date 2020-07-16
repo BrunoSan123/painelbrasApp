@@ -196,13 +196,7 @@ public class FlirInterface {
     private final CameraHandler.StreamDataListener streamDataListener = new CameraHandler.StreamDataListener() {
         @Override
         public void streamTempData(double tempAtCenter) {
-            double temperature = tempAtCenter - 273.15;
-            mainActivityInterface.setTemperature(temperature);
-
-//            mainActivityInterface.runOnUiThread(() -> {
-//                double temperature = tempAtCenter - 273.15;
-//                mainActivityInterface.setTemperatureText(temperature);
-//            });
+            mainActivityInterface.setTemperature(tempAtCenter);
         }
     };
 }
