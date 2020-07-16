@@ -26,6 +26,7 @@ public class FlirInterface {
     }
     private Context context;
     private MainActivityInterface mainActivityInterface;
+    private boolean alreadyAskedUSBPermissions = false;
 
     public enum CameraType {
         USB,
@@ -97,7 +98,13 @@ public class FlirInterface {
                 connectedIdentity = cameraHandler.getFlirOne();
                 // USB Permissions
                 if (UsbPermissionHandler.isFlirOne(connectedIdentity)) {
-                    usbPermissionHandler.requestFlirOnePermisson(connectedIdentity, this.context, permissionListener);
+                    if (!UsbPermissionHandler.hasFlirOnePermission(connectedIdentity, mainActivityInterface.getApplicationContext())) {
+                        usbPermissionHandler.requestFlirOnePermisson(
+                            connectedIdentity,
+                            mainActivityInterface.getApplicationContext(),
+                            permissionListener
+                        );
+                    }
                 }
             } catch(Exception ex) {
                 Log.e(TAG, ex.getMessage());
@@ -140,6 +147,7 @@ public class FlirInterface {
     private UsbPermissionHandler.UsbPermissionListener permissionListener = new UsbPermissionHandler.UsbPermissionListener() {
         @Override
         public void permissionGranted(Identity identity) {
+            alreadyAskedUSBPermissions = true;
             executeConnection();
         }
         @Override

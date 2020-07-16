@@ -128,8 +128,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     //=====================================================================
     // TODO: CONFIGURE AQUI O TIPO DE CAMERA A SER USADA: USB OU EMULADOR
     //=====================================================================
-    FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
-    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
+    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
+    FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -187,15 +187,19 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     @Override
     public synchronized void onResume() {
         super.onResume();
-        if (!flirInterface.isConnected() && !flirInterface.isDiscovering()) {
-            flirInterface.startDiscovery();
-            if (shouldFixFLIR) {
-                flirInterface.fixConnection(cameraType);
-            } else {
-                btnConnectFlir.setVisibility(View.VISIBLE);
+        try {
+            if (!flirInterface.isConnected() && !flirInterface.isDiscovering()) {
+                flirInterface.startDiscovery();
+                if (shouldFixFLIR) {
+                    flirInterface.fixConnection(cameraType);
+                } else {
+                    btnConnectFlir.setVisibility(View.VISIBLE);
+                }
             }
+            flirInterface.updateContext(this, this);
+        } catch(Exception ex) {
+            Log.e("DetectorActiviy", ex.getMessage());
         }
-        flirInterface.updateContext(this, this);
         stateCheckTimer.schedule(new TimerTask() {
             @Override
             public void run() {
