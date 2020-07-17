@@ -197,7 +197,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                     btnConnectFlir.setVisibility(View.VISIBLE);
                 }
             }
-
         } catch(Exception ex) {
             Log.e("DetectorActiviy", ex.getMessage());
         }

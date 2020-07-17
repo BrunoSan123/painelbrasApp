@@ -251,7 +251,7 @@ public class CameraHandler {
                 Palette palette = PaletteManager.getDefaultPalettes().get(0);
                 thermalImage.setPalette(palette);
                 thermalImage.setTemperatureUnit(TemperatureUnit.KELVIN);
-                thermalImage.getImageParameters().setEmissivity(0.95);
+                thermalImage.getImageParameters().setEmissivity(0.90);
                 thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
                 //Bitmap msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
                 JavaImageBuffer thermalBuffer = thermalImage.getImage();
