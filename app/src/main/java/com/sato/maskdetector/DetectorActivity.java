@@ -191,12 +191,13 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             if (!flirInterface.isConnected() && !flirInterface.isDiscovering()) {
                 flirInterface.startDiscovery();
                 if (shouldFixFLIR) {
+                    flirInterface.updateContext(this, this);
                     flirInterface.fixConnection(cameraType);
                 } else {
                     btnConnectFlir.setVisibility(View.VISIBLE);
                 }
             }
-            flirInterface.updateContext(this, this);
+
         } catch(Exception ex) {
             Log.e("DetectorActiviy", ex.getMessage());
         }
