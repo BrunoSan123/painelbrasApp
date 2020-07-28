@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "514952619172",
+    "firebase_url": "https://painelbras-e3937.firebaseio.com",
+    "project_id": "painelbras-e3937",
+    "storage_bucket": "painelbras-e3937.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514952619172:android:70dfcefdf4a4dceb0ff231",
+        "android_client_info": {
+          "package_name": "org.tensorflow.lite.examples.facerecognition"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "514952619172-57pjjuh8p6hi7crbtm6lji92kakkkacb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "org.tensorflow.lite.examples.facerecognition",
+            "certificate_hash": "e9e3873986f21003a7cd1e0a842412b0aa33a994"
+          }
+        },
+        {
+          "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9KKv8Up0AenGQG9YH14AyGzjvBiuXPbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

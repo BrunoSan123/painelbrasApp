@@ -1,4 +1,3 @@
 include ':thermalsdk-release'
 include ':androidsdk-release'
-include ':app'
-rootProject.name = "Mask Detector"
+include ':app' ,':tensorflow-lite'

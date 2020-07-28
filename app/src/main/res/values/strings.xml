@@ -1,9 +1,8 @@
 <resources>
-    <string name="app_name">PainelBras</string>
-    <string name="tfe_od_app_name" translation_description="Object Detection demo app [CHAR_LIMIT=40]">PainelBras</string>
-    <string name="tfe_od_camera_error" translation_description="Error regarding camera support[CHAR_LIMIT=40]">This device doesn\'t support Camera2 API.</string>
-    <string name="btn_connect_flir" translation_description="Button to connect Flir Camera">Conectar FLIR</string>
-    <string name="btn_disconnect_flir" translation_description="Button to disconnect Flir Camera">Desconectar FLIR</string>
+    <string name="tfe_od_app_name" translation_description="Object Detection demo app [CHAR_LIMIT=40]">PainelBras Totem</string>
     <string name="tfe_has_mask" translatable_description="Mask detected message">Com máscara</string>
     <string name="tfe_no_mask" translatable_description="Mask detected message">Sem máscara</string>
+    <string name="btn_connect_flir" translation_description="Button to connect Flir Camera">Conectar FLIR</string>
+    <string name="btn_disconnect_flir" translation_description="Button to disconnect Flir Camera">Desconectar FLIR</string>
+    <string name="tfe_od_camera_error" translation_description="Error regarding camera support[CHAR_LIMIT=40]">This device doesn\'t support Camera2 API.</string>
 </resources>
