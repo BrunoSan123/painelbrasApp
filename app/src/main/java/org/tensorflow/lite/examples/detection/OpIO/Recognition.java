@@ -7,14 +7,9 @@ import java.io.Serializable;
 
 /** An immutable result returned by a Classifier describing what was recognized. */
 public class Recognition implements Serializable {
-
-
     public static class RectFF extends RectF implements Serializable {
-
-
+        public static final long serialVersionUID = 4387542813438351789L;
     }
-
-
 
     private final String id;
 

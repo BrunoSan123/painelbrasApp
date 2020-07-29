@@ -110,19 +110,18 @@ public class TFLiteObjectDetectionAPIModel
 
   private float[][] embeedings;
 
-    private FirebaseAuth auth;
-    private FirebaseDatabase database;
-    private DatabaseReference databaseReference;
-    private TreinoTensorFlow treinoTensorFlow;
-    private FirebaseStorage storage;
-    private StorageReference storageReference;
-    private StorageReference treinoRef;
+  private FirebaseAuth auth;
+  private FirebaseDatabase database;
+  private DatabaseReference databaseReference;
+  private TreinoTensorFlow treinoTensorFlow;
+  private FirebaseStorage storage;
+  private StorageReference storageReference;
+  private StorageReference treinoRef;
 
   private ByteBuffer imgData;
-
   private Interpreter tfLite;
 
-// Face Mask Detector Output
+  // Face Mask Detector Output
   private float[][] output;
 
   private HashMap<String, Recognition> registered = new HashMap<>();
@@ -132,33 +131,25 @@ public class TFLiteObjectDetectionAPIModel
         if(name==null){
 
             try {
-
                 //AQUI VC LE DO FIREBASE
                 //HashMap<String, Recognition> registeredl= (HashMap<String, Recognition>) o.readObject();
                 //if(registeredl!=null)registered=registeredl;
 
-
                 FirebaseStorage storage = FirebaseStorage.getInstance();
                 StorageReference storageRef = storage.getReference();
                 StorageReference test2 = storageRef.child("test2.txt");
-
-
-
                 File localFile = File.createTempFile("test2", "txt");
 
                 test2.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
                     @Override
                     public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-
                         try {
-
                             ObjectInputStream i = new ObjectInputStream(new FileInputStream(localFile));
-
-                      HashMap<String, Recognition> registeredl= (HashMap<String, Recognition>) i.readObject();
+                            HashMap<String, Recognition> registeredl= (HashMap<String, Recognition>) i.readObject();
                             if(registeredl!=null)registered=registeredl;
                             Log.d("Clique AQUI","Clique Aqui Adicionado "+registeredl.size() );
                         } catch (Exception e) {
-                            Log.d("Clique AQUI","Clique Aqui erro "+e.toString() );
+                            Log.e("Clique AQUI", e.getMessage() );
                         }
                     }
                 }).addOnFailureListener(new OnFailureListener() {
@@ -168,37 +159,19 @@ public class TFLiteObjectDetectionAPIModel
                     }
                 });
 
-
-
-
-
-
                 Log.d("Clique AQUI","Clique AQUI file leu: " );
-
                 Log.d("Clique AQUI","Clique AQUI leu "   );
-
-            }catch (Exception e){
-
-
+            } catch (Exception e){
                 Log.d("Clique AQUI","Clique AQUI file created: " + e.toString());
             }
-            return ;
+            return;
         }
-
-
-
 
         registered.put(name, rec);
 
-
-        byte[] bytes=null;
+        byte[] bytes = null;
         try {
-
-
-            //  file.createNewFile();
-            //write the bytes in file
             {
-
                 ObjectOutputStream o = new ObjectOutputStream(det.openFileOutput("test2.txt",0));
                 /* 24 */       o.writeObject(registered);
                 /* 25 */       o.close();
@@ -209,13 +182,7 @@ public class TFLiteObjectDetectionAPIModel
                 Log.d("Clique AQUI","Clique AQUI delete " );
             }
 
-
-
-
             //AQUI VC ENVIA PRO FIREBASE
-
-
-
             FirebaseStorage storage = FirebaseStorage.getInstance();
             StorageReference storageRef = storage.getReference();
             StorageReference test2 = storageRef.child("test2.txt");
@@ -224,26 +191,12 @@ public class TFLiteObjectDetectionAPIModel
             Log.d("Clique AQUI","Clique Aqui Enviou ");
 
         }catch (Exception e){
-
-
             Log.d("Clique AQUI","Clique AQUI file created: " + e.toString());
-
             Log.d("Clique AQUI","Clique AQUI file created: " + bytes.length);
-
         }
-
-
     }
 
   private void cadastarTreino(){
-
-
-
-
-
-
-
-
   }
 
 

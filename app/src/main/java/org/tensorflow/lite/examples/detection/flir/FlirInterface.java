@@ -1,6 +1,7 @@
 package org.tensorflow.lite.examples.detection.flir;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.util.Log;
 
 import com.flir.thermalsdk.ErrorCode;
@@ -32,18 +33,27 @@ public class FlirInterface {
     private MainActivityInterface mainActivityInterface;
     private boolean alreadyAskedUSBPermissions = false;
 
+    private boolean isAutoConnecting = false;
+
     public enum CameraType {
         USB,
         SimulatorOne,
         SimulatorTwo
     }
 
+    private CameraType desiredCameraType;
+
     private static FlirInterface instance;
     public static FlirInterface getInstance(Context context, MainActivityInterface activity) {
         if (instance == null) {
             instance = new FlirInterface(context, activity);
+            instance.desiredCameraType = CameraType.USB;
         }
         return instance;
+    }
+
+    public void setDesiredCameraType(CameraType cameraType) {
+        this.desiredCameraType = cameraType;
     }
 
     private FlirInterface(Context context, MainActivityInterface activityInterface) {
@@ -89,6 +99,17 @@ public class FlirInterface {
             return;
         }
         cameraHandler.stopDiscovery(discoveryStatusListener);
+    }
+
+    public void autoConnect() {
+        isAutoConnecting = true;
+        if (isConnected()) {
+            return;
+        }
+
+        if (!isDiscovering()) {
+            cameraHandler.startDiscovery(cameraDiscoveryListener, discoveryStatusListener);
+        }
     }
 
     public void connect(CameraType cameraType) {
@@ -168,6 +189,23 @@ public class FlirInterface {
         public void onCameraFound(Identity identity) {
             Log.d(TAG, "onCameraFound identity: " + identity);
             cameraHandler.add(identity);
+            if (isAutoConnecting) {
+                switch (desiredCameraType) {
+                    case USB:
+                        if (cameraHandler.isFlirOne(identity)) {
+                            cameraHandler.stopDiscovery(discoveryStatusListener);
+                            connect(desiredCameraType);
+                        }
+                        break;
+                    case SimulatorOne:
+                    case SimulatorTwo:
+                        if (cameraHandler.isEmulator(identity)) {
+                            cameraHandler.stopDiscovery(discoveryStatusListener);
+                            connect(desiredCameraType);
+                        }
+                        break;
+                }
+            }
         }
 
         @Override
@@ -199,8 +237,8 @@ public class FlirInterface {
 
     private final CameraHandler.StreamDataListener streamDataListener = new CameraHandler.StreamDataListener() {
         @Override
-        public void streamTempData(double tempAtCenter) {
-            mainActivityInterface.setTemperature(tempAtCenter);
+        public void images(Bitmap msxBitmap, double tempAtCenter) {
+            mainActivityInterface.setThermalInfo(msxBitmap, tempAtCenter);
         }
     };
 }

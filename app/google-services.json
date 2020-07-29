@@ -8,6 +8,64 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:514952619172:android:919011db1e0c713e0ff231",
+        "android_client_info": {
+          "package_name": "com.painelbras.apprh"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9KKv8Up0AenGQG9YH14AyGzjvBiuXPbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514952619172:android:7d0d68fcb4524c120ff231",
+        "android_client_info": {
+          "package_name": "com.painelbras.totem"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9KKv8Up0AenGQG9YH14AyGzjvBiuXPbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514952619172-49m1299b2qluc2snn4q0d2a3cdqnmi50.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:514952619172:android:70dfcefdf4a4dceb0ff231",
         "android_client_info": {
           "package_name": "org.tensorflow.lite.examples.facerecognition"

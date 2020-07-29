@@ -9,8 +9,10 @@
  ********************************************************************/
 package org.tensorflow.lite.examples.detection.flir;
 
+import android.graphics.Bitmap;
 import android.util.Log;
 
+import com.flir.thermalsdk.androidsdk.image.BitmapAndroid;
 import com.flir.thermalsdk.image.JavaImageBuffer;
 import com.flir.thermalsdk.image.Rectangle;
 import com.flir.thermalsdk.image.TemperatureUnit;
@@ -62,8 +64,8 @@ public class CameraHandler {
     public interface StreamDataListener {
         //void images(FrameDataHolder dataHolder);
         //void images(Bitmap msxBitmap, Bitmap dcBitmap);
-        //void images(Bitmap msxBitmap, Bitmap dcBitmap, double tempAtCenter);
-        void streamTempData(double tempAtCenter);
+        void images(Bitmap msxBitmap, double tempAtCenter);
+        //void streamTempData(double tempAtCenter);
     }
 
     //Discovered FLIR cameras
@@ -208,6 +210,20 @@ public class CameraHandler {
         return null;
     }
 
+    public boolean isFlirOne(Identity identity) {
+        boolean isFlirOneEmulator = identity.deviceId.contains("EMULATED FLIR ONE");
+        boolean isCppEmulator = identity.deviceId.contains("C++ Emulator");
+
+        return !isFlirOneEmulator && !isCppEmulator;
+    }
+
+    public boolean isEmulator(Identity identity) {
+        boolean isFlirOneEmulator = identity.deviceId.contains("EMULATED FLIR ONE");
+        boolean isCppEmulator = identity.deviceId.contains("C++ Emulator");
+
+        return isFlirOneEmulator || isCppEmulator;
+    }
+
     private void withImage(Camera.Consumer<ThermalImage> functionToRun) {
         camera.withImage(functionToRun);
     }
@@ -239,13 +255,15 @@ public class CameraHandler {
         public void accept(ThermalImage thermalImage) {
             //Log.d(TAG, "accept() called with: thermalImage = [" + thermalImage.getDescription() + "]");
             try {
-                Palette palette = PaletteManager.getDefaultPalettes().get(0);
-                thermalImage.setPalette(palette);
-                thermalImage.setTemperatureUnit(TemperatureUnit.KELVIN);
-                thermalImage.getImageParameters().setEmissivity(0.90);
-                thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
-                //Bitmap msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
-                JavaImageBuffer thermalBuffer = thermalImage.getImage();
+                Bitmap msxBitmap;
+                {
+                    Palette palette = PaletteManager.getDefaultPalettes().get(0);
+                    thermalImage.setPalette(palette);
+                    thermalImage.setTemperatureUnit(TemperatureUnit.KELVIN);
+                    thermalImage.getImageParameters().setEmissivity(0.90);
+                    thermalImage.getFusion().setFusionMode(FusionMode.THERMAL_ONLY);
+                    msxBitmap = BitmapAndroid.createBitmap(thermalImage.getImage()).getBitMap();
+                }
 
                 int top = 1;
                 int left = 1;
@@ -253,24 +271,13 @@ public class CameraHandler {
                 int bottom = thermalImage.getHeight() - 1;
                 double tempatd = 0.0;
                 double[] temps = thermalImage.getValues(new Rectangle(left, top, right, bottom));
-                for (int i = 0; i < temps.length; i++) {
-                    if (temps[i] > tempatd) {
-                        tempatd = temps[i];
+                for (double temp : temps) {
+                    if (temp > tempatd) {
+                        tempatd = temp;
                     }
                 }
-                // Get hottest point
-//                for (int xi = left; xi < width; xi += 10) {
-//                    for (int yi = top; yi < height; yi += 10) {
-//                        Point pt1 = new Point(xi, yi);
-//                        double thermpul = thermalImage.getValueAt(pt1);
-//                        if (thermpul > tempatd) {
-//                            tempatd = thermpul;
-//                        }
-//                    }
-//                }
-                //Log.d(TAG,"adding images to cache");
                 double kelvinToCelsius = tempatd - 273;
-                streamDataListener.streamTempData(kelvinToCelsius);
+                streamDataListener.images(msxBitmap, kelvinToCelsius);
             } catch(Exception ex) {
                 Log.e("Flir LOOP", ex.getMessage());
             }
