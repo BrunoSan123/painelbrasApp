@@ -177,6 +177,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private Timer stateCheckTimer;
     private FlirInterface flirInterface;
 
+    private ArrayList<Funcionario> people;
+
+    // Estágios de Detecção
+    private boolean faceDetectStage = false;    // 1
+    private boolean faceRecoStage = false;      // 2
+    private boolean faceMaskStage = false;      // 3
+    private boolean tempDetectStage = false;    // 4
+
     // Beep Generatorr
     ToneGenerator dtmf;
 
@@ -285,6 +293,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     @Override
     public void onPreviewSizeChosen(final Size size, final int rotation) {
+        DetectorActivity that = this;
+
         final float textSizePx =
                 TypedValue.applyDimension(
                         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
@@ -303,6 +313,25 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                             TF_OD_API_INPUT_SIZE,
                             TF_OD_API_IS_QUANTIZED);
 
+            ConfiguracaoFirebase.loadPeopleData(new ConfiguracaoFirebase.PeopleLoadListener() {
+                @Override
+                public void onComplete(ArrayList<Funcionario> funcionarios) {
+                    people = funcionarios;
+                    // Load Firebase Data
+                    if (people != null) {
+                        for (Funcionario p : people) {
+                            if (p.getRecognitionData() != null) {
+                                detector.register(p.getNome(), Recognition.fromJson(p.getRecognitionData()), that);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String message) {
+                    //
+                }
+            });
 
             detectorMask =
                     TFLiteObjectDetectionAPIModelMask
@@ -312,19 +341,19 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                                     TF_OD_API_LABELS_FILE2,
                                     TF_OD_API_INPUT_SIZE2,
                                     TF_OD_API_IS_QUANTIZED);
-            if (Build.VERSION.SDK_INT >= 23 &&
-                    (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            != PackageManager.PERMISSION_GRANTED
-                    )) {
-
-
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                Manifest.permission.READ_EXTERNAL_STORAGE},
-                        1000);
-
-            } else {
-                detector.register(null, null, this);
-            }
+//            if (Build.VERSION.SDK_INT >= 23 &&
+//                    (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+//                            != PackageManager.PERMISSION_GRANTED
+//                    )) {
+//
+//
+//                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
+//                                Manifest.permission.READ_EXTERNAL_STORAGE},
+//                        1000);
+//
+//            } else {
+//                detector.register(null, null, this);
+//            }
 
             //cropSize = TF_OD_API_INPUT_SIZE;
         } catch (final IOException e) {
@@ -381,16 +410,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
 
         trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
-        trackingOverlay.addCallback(
-                new DrawCallback() {
-                    @Override
-                    public void drawCallback(final Canvas canvas) {
-                        tracker.draw(canvas);
-                        if (isDebug()) {
-                            tracker.drawDebug(canvas);
-                        }
-                    }
-                });
+        trackingOverlay.addCallback(canvas -> {
+            tracker.draw(canvas);
+            if (isDebug()) {
+                tracker.drawDebug(canvas);
+            }
+        });
 
         tracker.setFrameConfiguration(previewWidth, previewHeight, sensorOrientation);
     }
@@ -473,9 +498,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     }
 
     private void manageAlerts() {
-        if (!hasFace && !isRecognized) {
+        if (!hasFace || !isRecognized) {
             return;
         }
+
         btnTopBar.setVisibility(View.VISIBLE);
         btnBottomBar.setVisibility(View.VISIBLE);
         btnResultado.setVisibility(View.VISIBLE);
@@ -490,6 +516,17 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             btnBottomBar.setBackground(getDrawable(R.drawable.bottombar_green));
             btnBottomBar.setText("Entrada permitida");
         }
+
+        // Mask Alert
+        if (hasMask) {
+            btnResultado.setText("Com máscara");
+            btnResultado.setBackground(getDrawable(R.drawable.button_green));
+        } else {
+            btnResultado.setText("Sem máscara");
+            btnResultado.setBackground(getDrawable(R.drawable.button_red));
+            beepOnce();
+        }
+
         speakOnce();
     }
 
@@ -675,7 +712,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 String label = "";
                 float confidence = -1f;
                 Integer color = Color.BLUE;
-                Object extra = null;
+                float[][] extra = null;
 
 
                 if (add) {
@@ -690,44 +727,13 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 List<org.tensorflow.lite.examples.detection.tflitemask.Classifier.Recognition>
                         resultsAux2 = new ArrayList<>();
-                if (!isRecognized) {
-                    resultsAux2 = detectorMask.recognizeImage(faceBmp2);
 
-                    Log.d("chamouaqui", "chamouaqui " + faceBmp2.getWidth() + " " +
-                            faceBmp2.getHeight());
-                    //   umavez=!umavez;
-                    Log.d("ChamouAqui", "ChamouAqui " + "Resultado "
-                            + resultsAux2.get(0).getId() + "  " +
-                            resultsAux2.get(0).getTitle());
+                resultsAux2 = detectorMask.recognizeImage(faceBmp2);
 
-                    if (resultsAux2.get(0).getTitle().contains("no")) {
-//                        DetectorActivity.this.runOnUiThread(new Runnable() {
-//                            @Override
-//                            public void run() {
-//                                btnTopBar.setVisibility(View.VISIBLE);
-//                                btnBottomBar.setVisibility(View.VISIBLE);
-//                                btnResultado.setVisibility(View.VISIBLE);
-//                                btnResultado.setText("Sem máscara");
-//                                btnResultado.setBackground(getDrawable(R.drawable.button_red));
-//                                beepOnce();
-//
-//                            }
-//                        });
-                    } else {
-//                        DetectorActivity.this.runOnUiThread(new Runnable() {
-//                            @Override
-//                            public void run() {
-//                                mascara.setBackgroundColor(Color.BLUE);
-//                                mascara.setImageResource(R.drawable.commascara);
-//                                btnTopBar.setVisibility(View.VISIBLE);
-//                                btnBottomBar.setVisibility(View.VISIBLE);
-//                                btnResultado.setVisibility(View.VISIBLE);
-//                                btnResultado.setText("Com máscara");
-//                                btnResultado.setBackground(getDrawable(R.drawable.button_green));
-//                                estaDeMascara = true;
-//                            }
-//                        });
-                    }
+                if (resultsAux2.get(0).getTitle().contains("no")) {
+                    hasMask = false;
+                } else {
+                    hasMask = true;
                 }
 
                 //  final List< Recognition> resultsAux = new ArrayList<>();

@@ -5,29 +5,19 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConfiguracaoFirebase {
 
-    private static FirebaseAuth autenticacao;
-    private static DatabaseReference reference;
+    private static FirebaseAuth autenticacao = FirebaseAuth.getInstance();
     private static FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-    public static FirebaseAuth getFirebaseAutenticacao(){
-
-        if (autenticacao == null){
-            autenticacao = FirebaseAuth.getInstance();
-        }
+    public static FirebaseAuth getFirebaseAutenticacao() {
         return autenticacao;
-
-    }
-
-    public static DatabaseReference getFirebase(){
-        if (reference ==null){
-            reference = FirebaseDatabase.getInstance().getReference();
-        }
-        return getFirebase();
     }
 
     public static void addItemToCollection(String collectionName, Object item, FirestoreListener listener) {
@@ -39,26 +29,30 @@ public class ConfiguracaoFirebase {
                 listener.onError();
             }
         });
-        // Exemplo de uso
-//        Usuario usuario = new Usuario();
-//        usuario.setEmail("email@qualquer.com");
-//        usuario.setNome("Fulano");
-//        usuario.setSenha("SomePass");
-//        ConfiguracaoFirebase.addItemToCollection("pessoas", usuario, new FirestoreListener() {
-//            @Override
-//            public void onComplete() {
-//                // Adicionou com sucesso
-//            }
-//
-//            @Override
-//            public void onError() {
-//                // Deu ruim
-//            }
-//        });
+    }
+
+    public static void loadPeopleData(PeopleLoadListener peopleLoadListener) {
+        db.collection("Pessoas").get().addOnCompleteListener(snapshotTask -> {
+            if (snapshotTask.isSuccessful()) {
+                ArrayList<Funcionario> funcionarios = new ArrayList<>();
+
+                for (QueryDocumentSnapshot document : snapshotTask.getResult()) {
+                    Funcionario func = document.toObject(Funcionario.class);
+                    funcionarios.add(func);
+                }
+
+                peopleLoadListener.onComplete(funcionarios);
+            }
+        });
     }
 
     public interface FirestoreListener {
         void onComplete();
         void onError();
+    }
+
+    public interface PeopleLoadListener {
+        void onComplete(ArrayList<Funcionario> funcionarios);
+        void onError(String message);
     }
 }

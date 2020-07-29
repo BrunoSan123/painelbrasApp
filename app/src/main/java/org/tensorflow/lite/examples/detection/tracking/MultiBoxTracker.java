@@ -26,6 +26,7 @@ import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 import java.util.LinkedList;
@@ -87,6 +88,20 @@ public class MultiBoxTracker {
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
+  }
+
+  public String getFirstTrackedTitle() {
+    String title = "";
+    try {
+      if (trackedObjects.size() > 0) {
+        title = trackedObjects.get(0).title;
+      }
+    }
+    catch (Exception ex) {
+      Log.e("Multibox", ex.getMessage());
+    }
+
+    return title;
   }
 
   public synchronized void setFrameConfiguration(

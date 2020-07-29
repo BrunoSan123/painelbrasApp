@@ -56,6 +56,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.examples.detection.CameraActivity;
 import org.tensorflow.lite.examples.detection.DetectorActivity;
@@ -67,7 +68,7 @@ import org.tensorflow.lite.examples.detection.env.Logger;
  * Wrapper for frozen detection models trained using the Tensorflow Object Detection API:
  * - https://github.com/tensorflow/models/tree/master/research/object_detection
  * where you can find the training code.
- *
+ * <p>
  * To use pretrained models in the API or convert to TF Lite models, please see docs for details:
  * - https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md
  * - https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/running_on_mobile_tensorflowlite.md#running-our-model-on-android
@@ -75,275 +76,210 @@ import org.tensorflow.lite.examples.detection.env.Logger;
 public class TFLiteObjectDetectionAPIModel
         implements SimilarityClassifier {
 
-  private static final Logger LOGGER = new Logger();
+    private static final Logger LOGGER = new Logger();
 
-  //private static final int OUTPUT_SIZE = 512;
-  private static final int OUTPUT_SIZE = 192;
+    //private static final int OUTPUT_SIZE = 512;
+    private static final int OUTPUT_SIZE = 192;
 
-  // Only return this many results.
-  private static final int NUM_DETECTIONS = 1;
+    // Only return this many results.
+    private static final int NUM_DETECTIONS = 1;
 
-  // Float model
-  private static final float IMAGE_MEAN = 128.0f;
-  private static final float IMAGE_STD = 128.0f;
+    // Float model
+    private static final float IMAGE_MEAN = 128.0f;
+    private static final float IMAGE_STD = 128.0f;
 
-  // Number of threads in the java app
-  private static final int NUM_THREADS = 4;
-  private boolean isModelQuantized;
-  // Config values.
-  private int inputSize;
-  // Pre-allocated buffers.
-  private Vector<String> labels = new Vector<String>();
-  private int[] intValues;
-  // outputLocations: array of shape [Batchsize, NUM_DETECTIONS,4]
-  // contains the location of detected boxes
-  private float[][][] outputLocations;
-  // outputClasses: array of shape [Batchsize, NUM_DETECTIONS]
-  // contains the classes of detected boxes
-  private float[][] outputClasses;
-  // outputScores: array of shape [Batchsize, NUM_DETECTIONS]
-  // contains the scores of detected boxes
-  private float[][] outputScores;
-  // numDetections: array of shape [Batchsize]
-  // contains the number of detected boxes
-  private float[] numDetections;
+    // Number of threads in the java app
+    private static final int NUM_THREADS = 4;
+    private boolean isModelQuantized;
+    // Config values.
+    private int inputSize;
+    // Pre-allocated buffers.
+    private Vector<String> labels = new Vector<String>();
+    private int[] intValues;
+    // outputLocations: array of shape [Batchsize, NUM_DETECTIONS,4]
+    // contains the location of detected boxes
+    private float[][][] outputLocations;
+    // outputClasses: array of shape [Batchsize, NUM_DETECTIONS]
+    // contains the classes of detected boxes
+    private float[][] outputClasses;
+    // outputScores: array of shape [Batchsize, NUM_DETECTIONS]
+    // contains the scores of detected boxes
+    private float[][] outputScores;
+    // numDetections: array of shape [Batchsize]
+    // contains the number of detected boxes
+    private float[] numDetections;
 
-  private float[][] embeedings;
+    private float[][] embeedings;
 
-  private FirebaseAuth auth;
-  private FirebaseDatabase database;
-  private DatabaseReference databaseReference;
-  private TreinoTensorFlow treinoTensorFlow;
-  private FirebaseStorage storage;
-  private StorageReference storageReference;
-  private StorageReference treinoRef;
+    private FirebaseAuth auth;
+    private FirebaseDatabase database;
+    private DatabaseReference databaseReference;
+    private TreinoTensorFlow treinoTensorFlow;
+    private FirebaseStorage storage;
+    private StorageReference storageReference;
+    private StorageReference treinoRef;
 
-  private ByteBuffer imgData;
-  private Interpreter tfLite;
+    private ByteBuffer imgData;
+    private Interpreter tfLite;
 
-  // Face Mask Detector Output
-  private float[][] output;
+    // Face Mask Detector Output
+    private float[][] output;
 
-  private HashMap<String, Recognition> registered = new HashMap<>();
+    private HashMap<String, Recognition> registered = new HashMap<>();
 
     public void register(String name, Recognition rec, DetectorActivity det) {
-
-        if(name==null){
-
-            try {
-                //AQUI VC LE DO FIREBASE
-                //HashMap<String, Recognition> registeredl= (HashMap<String, Recognition>) o.readObject();
-                //if(registeredl!=null)registered=registeredl;
-
-                FirebaseStorage storage = FirebaseStorage.getInstance();
-                StorageReference storageRef = storage.getReference();
-                StorageReference test2 = storageRef.child("test2.txt");
-                File localFile = File.createTempFile("test2", "txt");
-
-                test2.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                        try {
-                            ObjectInputStream i = new ObjectInputStream(new FileInputStream(localFile));
-                            HashMap<String, Recognition> registeredl= (HashMap<String, Recognition>) i.readObject();
-                            if(registeredl!=null)registered=registeredl;
-                            Log.d("Clique AQUI","Clique Aqui Adicionado "+registeredl.size() );
-                        } catch (Exception e) {
-                            Log.e("Clique AQUI", e.getMessage() );
-                        }
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        Log.d("Clique AQUI","Clique Aqui erro "+exception.toString() );
-                    }
-                });
-
-                Log.d("Clique AQUI","Clique AQUI file leu: " );
-                Log.d("Clique AQUI","Clique AQUI leu "   );
-            } catch (Exception e){
-                Log.d("Clique AQUI","Clique AQUI file created: " + e.toString());
-            }
-            return;
-        }
-
-        registered.put(name, rec);
-
-        byte[] bytes = null;
         try {
-            {
-                ObjectOutputStream o = new ObjectOutputStream(det.openFileOutput("test2.txt",0));
-                /* 24 */       o.writeObject(registered);
-                /* 25 */       o.close();
-                /* 26 */
+            registered.put(name, rec);
+        } catch (Exception ex) {
+            Log.e("Register", ex.getMessage());
+        }
+    }
 
-                Log.d("Clique AQUI","Clique AQUI file created: " );
-                ///     file.delete();
-                Log.d("Clique AQUI","Clique AQUI delete " );
+    private TFLiteObjectDetectionAPIModel() {
+    }
+
+    /**
+     * Memory-map the model file in Assets.
+     */
+    private static MappedByteBuffer loadModelFile(AssetManager assets, String modelFilename)
+            throws IOException {
+        AssetFileDescriptor fileDescriptor = assets.openFd(modelFilename);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+
+    /**
+     * Initializes a native TensorFlow session for classifying images.
+     *
+     * @param assetManager  The asset manager to be used to load assets.
+     * @param modelFilename The filepath of the model GraphDef protocol buffer.
+     * @param labelFilename The filepath of label file for classes.
+     * @param inputSize     The size of image input
+     * @param isQuantized   Boolean representing model is quantized or not
+     */
+    public static SimilarityClassifier create(
+            final AssetManager assetManager,
+            final String modelFilename,
+            final String labelFilename,
+            final int inputSize,
+            final boolean isQuantized)
+            throws IOException {
+
+        final TFLiteObjectDetectionAPIModel d = new TFLiteObjectDetectionAPIModel();
+
+        String actualFilename = labelFilename.split("file:///android_asset/")[1];
+        InputStream labelsInput = assetManager.open(actualFilename);
+        BufferedReader br = new BufferedReader(new InputStreamReader(labelsInput));
+        String line;
+        while ((line = br.readLine()) != null) {
+            LOGGER.w(line);
+            d.labels.add(line);
+        }
+        br.close();
+
+        d.inputSize = inputSize;
+
+        try {
+            d.tfLite = new Interpreter(loadModelFile(assetManager, modelFilename));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        d.isModelQuantized = isQuantized;
+        // Pre-allocate buffers.
+        int numBytesPerChannel;
+        if (isQuantized) {
+            numBytesPerChannel = 1; // Quantized
+        } else {
+            numBytesPerChannel = 4; // Floating point
+        }
+        d.imgData = ByteBuffer.allocateDirect(1 * d.inputSize * d.inputSize * 3 * numBytesPerChannel);
+        d.imgData.order(ByteOrder.nativeOrder());
+        d.intValues = new int[d.inputSize * d.inputSize];
+
+        d.tfLite.setNumThreads(NUM_THREADS);
+        d.outputLocations = new float[1][NUM_DETECTIONS][4];
+        d.outputClasses = new float[1][NUM_DETECTIONS];
+        d.outputScores = new float[1][NUM_DETECTIONS];
+        d.numDetections = new float[1];
+        return d;
+    }
+
+    // looks for the nearest embeeding in the dataset (using L2 norm)
+    // and retrurns the pair <id, distance>
+    private Pair<String, Float> findNearest(float[] emb) {
+
+        Pair<String, Float> ret = null;
+        for (Map.Entry<String, Recognition> entry : registered.entrySet()) {
+            final String name = entry.getKey();
+            final float[] knownEmb = ((float[][]) entry.getValue().getExtra())[0];
+
+            float distance = 0;
+            for (int i = 0; i < emb.length; i++) {
+                float diff = emb[i] - knownEmb[i];
+                distance += diff * diff;
             }
-
-            //AQUI VC ENVIA PRO FIREBASE
-            FirebaseStorage storage = FirebaseStorage.getInstance();
-            StorageReference storageRef = storage.getReference();
-            StorageReference test2 = storageRef.child("test2.txt");
-            test2.delete();
-            test2.putStream(det.openFileInput("test2.txt"));
-            Log.d("Clique AQUI","Clique Aqui Enviou ");
-
-        }catch (Exception e){
-            Log.d("Clique AQUI","Clique AQUI file created: " + e.toString());
-            Log.d("Clique AQUI","Clique AQUI file created: " + bytes.length);
+            distance = (float) Math.sqrt(distance);
+            if (ret == null || distance < ret.second) {
+                ret = new Pair<>(name, distance);
+            }
         }
+
+        return ret;
     }
 
-  private void cadastarTreino(){
-  }
+    @Override
+    public List<Recognition> recognizeImage(final Bitmap bitmap, boolean storeExtra) {
+        // Log this method so that it can be analyzed with systrace.
+        Trace.beginSection("recognizeImage");
 
+        Trace.beginSection("preprocessBitmap");
+        // Preprocess the image data from 0-255 int to normalized float based
+        // on the provided parameters.
+        bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
 
-  private TFLiteObjectDetectionAPIModel() {}
-
-  /** Memory-map the model file in Assets. */
-  private static MappedByteBuffer loadModelFile(AssetManager assets, String modelFilename)
-      throws IOException {
-    AssetFileDescriptor fileDescriptor = assets.openFd(modelFilename);
-    FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-    FileChannel fileChannel = inputStream.getChannel();
-    long startOffset = fileDescriptor.getStartOffset();
-    long declaredLength = fileDescriptor.getDeclaredLength();
-    return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
-  }
-
-  /**
-   * Initializes a native TensorFlow session for classifying images.
-   *
-   * @param assetManager The asset manager to be used to load assets.
-   * @param modelFilename The filepath of the model GraphDef protocol buffer.
-   * @param labelFilename The filepath of label file for classes.
-   * @param inputSize The size of image input
-   * @param isQuantized Boolean representing model is quantized or not
-   */
-  public static SimilarityClassifier create(
-      final AssetManager assetManager,
-      final String modelFilename,
-      final String labelFilename,
-      final int inputSize,
-      final boolean isQuantized)
-      throws IOException {
-
-    final TFLiteObjectDetectionAPIModel d = new TFLiteObjectDetectionAPIModel();
-
-    String actualFilename = labelFilename.split("file:///android_asset/")[1];
-    InputStream labelsInput = assetManager.open(actualFilename);
-    BufferedReader br = new BufferedReader(new InputStreamReader(labelsInput));
-    String line;
-    while ((line = br.readLine()) != null) {
-      LOGGER.w(line);
-      d.labels.add(line);
-    }
-    br.close();
-
-    d.inputSize = inputSize;
-
-    try {
-      d.tfLite = new Interpreter(loadModelFile(assetManager, modelFilename));
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-
-    d.isModelQuantized = isQuantized;
-    // Pre-allocate buffers.
-    int numBytesPerChannel;
-    if (isQuantized) {
-      numBytesPerChannel = 1; // Quantized
-    } else {
-      numBytesPerChannel = 4; // Floating point
-    }
-    d.imgData = ByteBuffer.allocateDirect(1 * d.inputSize * d.inputSize * 3 * numBytesPerChannel);
-    d.imgData.order(ByteOrder.nativeOrder());
-    d.intValues = new int[d.inputSize * d.inputSize];
-
-    d.tfLite.setNumThreads(NUM_THREADS);
-    d.outputLocations = new float[1][NUM_DETECTIONS][4];
-    d.outputClasses = new float[1][NUM_DETECTIONS];
-    d.outputScores = new float[1][NUM_DETECTIONS];
-    d.numDetections = new float[1];
-    return d;
-  }
-
-  // looks for the nearest embeeding in the dataset (using L2 norm)
-  // and retrurns the pair <id, distance>
-  private Pair<String, Float> findNearest(float[] emb) {
-
-    Pair<String, Float> ret = null;
-    for (Map.Entry<String, Recognition> entry : registered.entrySet()) {
-        final String name = entry.getKey();
-        final float[] knownEmb = ((float[][]) entry.getValue().getExtra())[0];
-
-        float distance = 0;
-        for (int i = 0; i < emb.length; i++) {
-              float diff = emb[i] - knownEmb[i];
-              distance += diff*diff;
+        imgData.rewind();
+        for (int i = 0; i < inputSize; ++i) {
+            for (int j = 0; j < inputSize; ++j) {
+                int pixelValue = intValues[i * inputSize + j];
+                if (isModelQuantized) {
+                    // Quantized model
+                    imgData.put((byte) ((pixelValue >> 16) & 0xFF));
+                    imgData.put((byte) ((pixelValue >> 8) & 0xFF));
+                    imgData.put((byte) (pixelValue & 0xFF));
+                } else { // Float model
+                    imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+                    imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+                    imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
+                }
+            }
         }
-        distance = (float) Math.sqrt(distance);
-        if (ret == null || distance < ret.second) {
-            ret = new Pair<>(name, distance);
-        }
-    }
+        Trace.endSection(); // preprocessBitmap
 
-    return ret;
-
-  }
+        // Copy the input data into TensorFlow.
+        Trace.beginSection("feed");
 
 
-  @Override
-  public List<Recognition> recognizeImage(final Bitmap bitmap, boolean storeExtra) {
-    // Log this method so that it can be analyzed with systrace.
-    Trace.beginSection("recognizeImage");
+        Object[] inputArray = {imgData};
 
-    Trace.beginSection("preprocessBitmap");
-    // Preprocess the image data from 0-255 int to normalized float based
-    // on the provided parameters.
-    bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
-
-    imgData.rewind();
-    for (int i = 0; i < inputSize; ++i) {
-      for (int j = 0; j < inputSize; ++j) {
-        int pixelValue = intValues[i * inputSize + j];
-        if (isModelQuantized) {
-          // Quantized model
-          imgData.put((byte) ((pixelValue >> 16) & 0xFF));
-          imgData.put((byte) ((pixelValue >> 8) & 0xFF));
-          imgData.put((byte) (pixelValue & 0xFF));
-        } else { // Float model
-          imgData.putFloat((((pixelValue >> 16) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-          imgData.putFloat((((pixelValue >> 8) & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-          imgData.putFloat(((pixelValue & 0xFF) - IMAGE_MEAN) / IMAGE_STD);
-        }
-      }
-    }
-    Trace.endSection(); // preprocessBitmap
-
-    // Copy the input data into TensorFlow.
-    Trace.beginSection("feed");
-
-
-    Object[] inputArray = {imgData};
-
-    Trace.endSection();
+        Trace.endSection();
 
 // Here outputMap is changed to fit the Face Mask detector
-    Map<Integer, Object> outputMap = new HashMap<>();
+        Map<Integer, Object> outputMap = new HashMap<>();
 
-    embeedings = new float[1][OUTPUT_SIZE];
-    outputMap.put(0, embeedings);
+        embeedings = new float[1][OUTPUT_SIZE];
+        outputMap.put(0, embeedings);
 
 
-    // Run the inference call.
-    Trace.beginSection("run");
-    //tfLite.runForMultipleInputsOutputs(inputArray, outputMapBack);
+        // Run the inference call.
+        Trace.beginSection("run");
+        //tfLite.runForMultipleInputsOutputs(inputArray, outputMapBack);
 
-    tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
-    Trace.endSection();
+        tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
+        Trace.endSection();
 
 //    String res = "[";
 //    for (int i = 0; i < embeedings[0].length; i++) {
@@ -353,61 +289,63 @@ public class TFLiteObjectDetectionAPIModel
 //    res += "]";
 
 
-    float distance = Float.MAX_VALUE;
-    String id = "0";
-    String label = "?";
+        float distance = Float.MAX_VALUE;
+        String id = "0";
+        String label = "?";
 
-    if (registered.size() > 0) {
-        //LOGGER.i("dataset SIZE: " + registered.size());
-        final Pair<String, Float> nearest = findNearest(embeedings[0]);
-        if (nearest != null) {
+        if (registered.size() > 0) {
+            //LOGGER.i("dataset SIZE: " + registered.size());
+            final Pair<String, Float> nearest = findNearest(embeedings[0]);
+            if (nearest != null) {
 
-            final String name = nearest.first;
-            label = name;
-            distance = nearest.second;
+                final String name = nearest.first;
+                label = name;
+                distance = nearest.second;
 
-            LOGGER.i("nearest: " + name + " - distance: " + distance);
+                LOGGER.i("nearest: " + name + " - distance: " + distance);
 
 
+            }
         }
+
+
+        final int numDetectionsOutput = 1;
+        final ArrayList<Recognition> recognitions = new ArrayList<>(numDetectionsOutput);
+        Recognition rec = new Recognition(
+                id,
+                label,
+                distance,
+                new RectF());
+
+        recognitions.add(rec);
+
+        if (storeExtra) {
+            rec.setExtra(embeedings);
+        }
+
+        Trace.endSection();
+        return recognitions;
     }
 
-
-    final int numDetectionsOutput = 1;
-    final ArrayList<Recognition> recognitions = new ArrayList<>(numDetectionsOutput);
-    Recognition rec = new Recognition(
-            id,
-            label,
-            distance,
-            new RectF());
-
-    recognitions.add( rec );
-
-    if (storeExtra) {
-        rec.setExtra(embeedings);
+    @Override
+    public void enableStatLogging(final boolean logStats) {
     }
 
-    Trace.endSection();
-    return recognitions;
-  }
+    @Override
+    public String getStatString() {
+        return "";
+    }
 
-  @Override
-  public void enableStatLogging(final boolean logStats) {}
+    @Override
+    public void close() {
+    }
 
-  @Override
-  public String getStatString() {
-    return "";
-  }
+    public void setNumThreads(int num_threads) {
+        if (tfLite != null) tfLite.setNumThreads(num_threads);
+    }
 
-  @Override
-  public void close() {}
-
-  public void setNumThreads(int num_threads) {
-    if (tfLite != null) tfLite.setNumThreads(num_threads);
-  }
-
-  @Override
-  public void setUseNNAPI(boolean isChecked) {
-    if (tfLite != null) tfLite.setUseNNAPI(isChecked);
-  }
+    @Override
+    public void setUseNNAPI(boolean isChecked) {
+        if (tfLite != null) tfLite.setUseNNAPI(isChecked);
+    }
 }
