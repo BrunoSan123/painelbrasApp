@@ -92,12 +92,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private static final Logger LOGGER = new Logger();
 
     Bitmap crop = null;
-    // FaceNet
-//  private static final int TF_OD_API_INPUT_SIZE = 160;
-//  private static final boolean TF_OD_API_IS_QUANTIZED = false;
-//  private static final String TF_OD_API_MODEL_FILE = "facenet.tflite";
-//  //private static final String TF_OD_API_MODEL_FILE = "facenet_hiroki.tflite";
-
     // MobileFaceNet
     private static final int TF_OD_API_INPUT_SIZE = 112;
     private static final int TF_OD_API_INPUT_SIZE2 = 196;
@@ -164,15 +158,13 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     // Text-To-Speech
     TextToSpeech tts;
-    boolean didSpeak = false;
-    // Beep
-    private boolean didBeep = false;
 
     // Default for no enter
+    private boolean hasFace = false;
     private boolean hasMask = false;
     private boolean isRecognized = false;
-    private boolean tempIsHigh = true;
-    private boolean hasFace = false;
+    private boolean didSpeak = false;
+    private boolean didBeep = false;
 
     private Timer stateCheckTimer;
     private FlirInterface flirInterface;
@@ -180,10 +172,21 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private ArrayList<Funcionario> people;
 
     // Estágios de Detecção
-    private boolean faceDetectStage = false;    // 1
-    private boolean faceRecoStage = false;      // 2
-    private boolean faceMaskStage = false;      // 3
-    private boolean tempDetectStage = false;    // 4
+    private enum DetectionStages {
+        Idle,
+        FaceDetection,
+        FaceRecognition,
+        MaskDetection,
+        TemperatureRead,
+        Freedom,
+        Jail
+    };
+    private DetectionStages currentStage = DetectionStages.Idle;
+    private String detectedName;
+
+    // Usado no delay entre uma detecção e outra
+    private long delayMillis = 0L;
+    private long maskDelayMillis = 0L;
 
     // Beep Generatorr
     ToneGenerator dtmf;
@@ -194,6 +197,13 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     //FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
     FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
 
+    //==========================================================
+    // TODO: VARIÁVEIS DE CONFIGURAÇÃO - LER DO FIREBASE
+    //==========================================================
+    private boolean activateFlir = true;
+    private boolean activateMaskDetection = true;
+    private double temperatureThreshold = 38.2;     // Temp que é considerada alta
+    private long delayBetweetDetections = 10000L;    // Tempo em milisegundos entre detecções
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -203,6 +213,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         btnTopBar = findViewById(R.id.buttonTop);
         btnBottomBar = findViewById(R.id.buttonBottom);
         msxImage = findViewById(R.id.msx_image);
+
+        btnTopBar.setVisibility(View.INVISIBLE);
+        btnBottomBar.setVisibility(View.INVISIBLE);
+        btnResultado.setVisibility(View.INVISIBLE);
+        msxImage.setVisibility(View.INVISIBLE);
 
         // Beep
         dtmf = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
@@ -216,14 +231,15 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                         .build();
 
 
-        FaceDetector detector = FaceDetection.getClient(options);
-
-        faceDetector = detector;
+        faceDetector = FaceDetection.getClient(options);;
 
         // Initialize TTS
         tts = new TextToSpeech(getApplicationContext(), status -> {
             if (status != TextToSpeech.ERROR) {
-                tts.setLanguage(Locale.forLanguageTag("pt-BR"));
+                Locale desiredLanguage = Locale.forLanguageTag("pt-BR");
+                if (tts.isLanguageAvailable(desiredLanguage) > 0) {
+                    tts.setLanguage(Locale.forLanguageTag("pt-BR"));
+                }
                 //tts.setSpeechRate(0.8f);
             }
         });
@@ -233,47 +249,102 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         // reset
         stateCheckTimer = new Timer();
-        resetReadings();
     }
 
-    void resetReadings() {
-        didSpeak = false;
-        didBeep = false;
-        hasMask = false;
-        hasFace = false;
-
-        btnTopBar.setVisibility(View.INVISIBLE);
-        btnBottomBar.setVisibility(View.INVISIBLE);
-        btnResultado.setVisibility(View.INVISIBLE);
-    }
 
     @Override
     public synchronized void onResume() {
         super.onResume();
         try {
-            flirInterface.updateContext(this, this);
-            flirInterface.setDesiredCameraType(cameraType);
-            flirInterface.autoConnect();
+            if (flirInterface != null) {
+                flirInterface.updateContext(this, this);
+                flirInterface.setDesiredCameraType(cameraType);
+                flirInterface.autoConnect();
+            }
         } catch(Exception ex) {
             Log.e("onResume", ex.getMessage());
         }
         stateCheckTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                runOnUiThread(() -> {
-                    manageAlerts();
-                });
+                if (!hasFace) {
+                    resetDetection();
+                } else {
+                    timerLoop();
+                }
             }
-        }, 0, 2000);
+        }, 0, 1000);
+    }
+
+    private void timerLoop() {
+        //|| CONTROLA A STATE MACHINE ||\\
+        switch (currentStage) {
+            case Idle:
+                if (hasFace) {
+                    currentStage = DetectionStages.FaceDetection;
+                }
+                break;
+            case FaceDetection:
+                if (isRecognized) {
+                    askForMask();
+                    maskDelayMillis = System.currentTimeMillis();
+                    currentStage = DetectionStages.FaceRecognition;
+                }
+                break;
+            case FaceRecognition:
+                if (System.currentTimeMillis() - maskDelayMillis >= 3000) {
+                    if (hasMask) {
+                        maskDelayMillis = 0L;
+                        currentStage = DetectionStages.MaskDetection;
+                    }
+                }
+                break;
+            case MaskDetection:
+                if (temperature > 0) {
+                    currentStage = DetectionStages.TemperatureRead;
+                }
+                break;
+            case TemperatureRead:
+                // Conditions to freedom
+                if (temperature >= temperatureThreshold) {
+                    currentStage = DetectionStages.Jail;
+                } else {
+                    currentStage = DetectionStages.Freedom;
+                }
+                delayMillis = System.currentTimeMillis();
+                break;
+            case Freedom:
+                showAccessGranted();
+                showMaskStatus();
+                showThermalImage();
+                speakAccessResult(true);
+                openGate();
+                if (System.currentTimeMillis() - delayMillis >= delayBetweetDetections) {
+                    resetDetection();
+                    closeGate();
+                }
+                break;
+            case Jail:
+                showAccessBlocked();
+                showMaskStatus();
+                speakAccessResult(false);
+                beep();
+                if (System.currentTimeMillis() - delayMillis >= delayBetweetDetections) {
+                    resetDetection();
+                }
+                break;
+        }
     }
 
     @Override
     public synchronized void onPause() {
-        if (flirInterface.isConnected()) {
-            flirInterface.disconnect();
-        }
-        if (flirInterface.isDiscovering()) {
-            flirInterface.stopDiscovery();
+        if (flirInterface != null) {
+            if (flirInterface.isConnected()) {
+                flirInterface.disconnect();
+            }
+            if (flirInterface.isDiscovering()) {
+                flirInterface.stopDiscovery();
+            }
         }
         if (tts != null) {
             try {
@@ -284,11 +355,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             }
         }
         super.onPause();
-    }
-
-
-    public void iniciarFirebase() {
-        auth = ConfiguracaoFirebase.getFirebaseAutenticacao();
     }
 
     @Override
@@ -341,21 +407,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                                     TF_OD_API_LABELS_FILE2,
                                     TF_OD_API_INPUT_SIZE2,
                                     TF_OD_API_IS_QUANTIZED);
-//            if (Build.VERSION.SDK_INT >= 23 &&
-//                    (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-//                            != PackageManager.PERMISSION_GRANTED
-//                    )) {
-//
-//
-//                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,
-//                                Manifest.permission.READ_EXTERNAL_STORAGE},
-//                        1000);
-//
-//            } else {
-//                detector.register(null, null, this);
-//            }
-
-            //cropSize = TF_OD_API_INPUT_SIZE;
         } catch (final IOException e) {
             e.printStackTrace();
             LOGGER.e(e, "Exception initializing classifier!");
@@ -453,7 +504,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 .addOnSuccessListener(faces -> {
                     if (faces.size() == 0) {
                         hasFace = false;
-                        resetReadings();
                         updateResults(currTimestamp, new LinkedList<>());
                         return;
                     }
@@ -481,11 +531,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     public void setThermalInfo(Bitmap thermal, double temperature) {
         this.temperature = temperature;
         String tmpString = String.format("%sºC", precision.format(temperature));
-        if (temperature > 38.2) {
-            tempIsHigh = true;
-        } else {
-            tempIsHigh = false;
-        }
         runOnUiThread(() -> {
             btnTopBar.setText(tmpString);
             msxImage.setImageBitmap(thermal);
@@ -497,75 +542,115 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         return null;
     }
 
-    private void manageAlerts() {
-        if (!hasFace || !isRecognized) {
-            return;
-        }
+    private void showAccessBlocked() {
+        // Show elements according to access blocked
+        runOnUiThread(() -> {
+            btnTopBar.setVisibility(View.VISIBLE);
+            btnBottomBar.setVisibility(View.VISIBLE);
 
-        btnTopBar.setVisibility(View.VISIBLE);
-        btnBottomBar.setVisibility(View.VISIBLE);
-        btnResultado.setVisibility(View.VISIBLE);
-
-        // Can enter?
-        if (tempIsHigh || btnResultado.getText().toString().equals("Sem máscara")) {
             btnTopBar.setBackground(getDrawable(R.drawable.topbar_red));
             btnBottomBar.setBackground(getDrawable(R.drawable.bottombar_red));
             btnBottomBar.setText("Não permitido");
-        } else {
+        });
+    }
+
+    private void showAccessGranted() {
+        runOnUiThread(() -> {
+            btnTopBar.setVisibility(View.VISIBLE);
+            btnBottomBar.setVisibility(View.VISIBLE);
+
             btnTopBar.setBackground(getDrawable(R.drawable.topbar_green));
             btnBottomBar.setBackground(getDrawable(R.drawable.bottombar_green));
             btnBottomBar.setText("Entrada permitida");
-        }
+        });
+    }
 
+    private void showMaskStatus() {
         // Mask Alert
-        if (hasMask) {
-            btnResultado.setText("Com máscara");
-            btnResultado.setBackground(getDrawable(R.drawable.button_green));
+        runOnUiThread(() -> {
+            if (hasMask) {
+                btnResultado.setText("Com máscara");
+                btnResultado.setBackground(getDrawable(R.drawable.button_green));
+            } else {
+                btnResultado.setText("Sem máscara");
+                btnResultado.setBackground(getDrawable(R.drawable.button_red));
+            }
+            btnResultado.setVisibility(View.VISIBLE);
+        });
+    }
+
+    private void showThermalImage() {
+        runOnUiThread(() -> {
+            msxImage.setVisibility(View.VISIBLE);
+        });
+    }
+
+    private void askForMask() {
+        try {
+            String speakText = "Bem vindo " + detectedName.trim() + "! Por favor coloque sua máscara!";
+            if (tts != null) {
+                tts.speak(speakText, TextToSpeech.QUEUE_FLUSH, null, "putYourMask");
+            }
+        } catch(Exception ex) {
+            Log.e("TTS", ex.toString());
+        }
+    }
+
+    private void speakAccessResult(boolean accessResult) {
+        if (didSpeak) return;
+
+        String speakText = "";
+        if (accessResult) {
+            speakText = "Acesso permitido.";
         } else {
-            btnResultado.setText("Sem máscara");
-            btnResultado.setBackground(getDrawable(R.drawable.button_red));
-            beepOnce();
+            speakText = "Acesso não permitido";
         }
-
-        speakOnce();
-    }
-
-    void speakOnce() {
-        // Speak only when Flir enabled.
-        if (temperature == 0) {
-            return;
-        }
+        didSpeak = true;
         try {
-            if (!didSpeak && hasFace) {
-                speakTemp(temperature);
-                didSpeak = true;
+            if (tts != null) {
+                tts.speak(speakText, TextToSpeech.QUEUE_FLUSH, null, "accessStatus");
             }
-        } catch (Exception ex) {
-            Log.e("SPEECH", ex.getMessage());
+        } catch(Exception ex) {
+            Log.e("TTS", ex.toString());
         }
     }
 
-    void beepOnce() {
+    private void resetDetection() {
+        // Go back to IDLE state
+        delayMillis = 0L;
+        detectedName = "";
+        currentStage = DetectionStages.Idle;
+        hasFace = false;
+        hasMask = false;
+        isRecognized = false;
+        temperature = 0.0;
+        didBeep = false;
+        didSpeak = false;
+
+        runOnUiThread(() -> {
+            btnTopBar.setVisibility(View.INVISIBLE);
+            btnBottomBar.setVisibility(View.INVISIBLE);
+            btnResultado.setVisibility(View.INVISIBLE);
+            msxImage.setVisibility(View.INVISIBLE);
+        });
+    }
+
+    private void openGate() {
+        // TODO: INSIRA AQUI O CÓDIGO DE ABERTURA DA CATRACA/CANCELA
+        Log.d("GATE", "Open Gate");
+    }
+
+    private void closeGate() {
+        // TODO: INSIRA AQUI O CÓDIGO DE FECHAMENTO DA CATRACA/CANCELA
+        Log.d("GATE", "Close Gate");
+    }
+    void beep() {
+        if (didBeep) return;
         try {
-            if (!didBeep && hasFace) {
-                dtmf.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 300);
-                didBeep = true;
-            }
+            didBeep = true;
+            dtmf.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 300);
         } catch (Exception ex) {
             Log.e("BEEP", ex.getMessage());
-        }
-    }
-
-    private void speakTemp(double temp) {
-        if (tts == null) {
-            return;
-        }
-        if (!tts.isSpeaking()) {
-            if (temp > 38.2) {
-                tts.speak("Temperatura alta.", TextToSpeech.QUEUE_FLUSH, null, "temp");
-            } else {
-                tts.speak("Temperatura normal.", TextToSpeech.QUEUE_FLUSH, null, "temp");
-            }
         }
     }
 
@@ -625,8 +710,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         trackingOverlay.postInvalidate();
         computingDetection = false;
     }
-
-    //public boolean umavez = false;
 
     private void onFacesDetected(long currTimestamp, List<Face> faces, boolean add) {
 
@@ -747,6 +830,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                     if (conf < 1.0f) {
                         confidence = conf;
                         label = result.getTitle();
+                        detectedName = label;
                         if (result.getId().equals("0")) {
                             color = Color.GREEN;
                             isRecognized = true;
