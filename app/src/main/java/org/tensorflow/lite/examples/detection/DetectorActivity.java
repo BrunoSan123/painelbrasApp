@@ -94,7 +94,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     Bitmap crop = null;
     // MobileFaceNet
     private static final int TF_OD_API_INPUT_SIZE = 112;
-    private static final int TF_OD_API_INPUT_SIZE2 = 196;
+    private static final int TF_OD_API_INPUT_SIZE2 = 224;
     private static final boolean TF_OD_API_IS_QUANTIZED = false;
     private static final String TF_OD_API_MODEL_FILE = "mobile_face_net.tflite";
 
@@ -197,8 +197,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     //=====================================================================
     // TODO: CONFIGURE AQUI O TIPO DE CAMERA A SER USADA: USB OU EMULADOR
     //=====================================================================
-    FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
-    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
+    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
+    FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
 
     //==========================================================
     // TODO: VARIÁVEIS DE CONFIGURAÇÃO - LER DO FIREBASE
@@ -438,7 +438,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         portraitBmp = Bitmap.createBitmap(targetW, targetH, Config.ARGB_8888);
         faceBmp = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE, TF_OD_API_INPUT_SIZE, Config.ARGB_8888);
-        //faceBmp2 = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE2, TF_OD_API_INPUT_SIZE2, Config.ARGB_8888);
+        faceBmp2 = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE2, TF_OD_API_INPUT_SIZE2, Config.ARGB_8888);
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
@@ -806,15 +806,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                 List<org.tensorflow.lite.examples.detection.tflitemask.Classifier.Recognition>
                         resultsAux2 = new ArrayList<>();
+                resultsAux2 = detectorMask.recognizeImage(faceBmp2);
 
-                if (isRecognized) {
-                    resultsAux2 = detectorMask.recognizeImage(faceBmp);
-
-                    if (resultsAux2.get(0).getTitle().equals("mask")) {
-                        hasMask = true;
-                    } else {
-                        hasMask = false;
-                    }
+                if (resultsAux2.get(0).getTitle().equals("mask")) {
+                    hasMask = true;
+                } else {
+                    hasMask = false;
                 }
 
                 //  final List< Recognition> resultsAux = new ArrayList<>();

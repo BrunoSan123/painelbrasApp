@@ -119,7 +119,6 @@ public class TFLiteObjectDetectionAPIModelMask implements Classifier {
         BufferedReader br = new BufferedReader(new InputStreamReader(labelsInput));
         String line;
         while ((line = br.readLine()) != null) {
-
             d.labels.add(line);
         }
         br.close();
@@ -140,9 +139,7 @@ public class TFLiteObjectDetectionAPIModelMask implements Classifier {
         } else {
             numBytesPerChannel = 4; // Floating point
         }
-        Log.d("chamouaqui","chamouaqui "+d.inputSize+" "+
-                1 * d.inputSize * d.inputSize * 4* numBytesPerChannel);
-        d.imgData = ByteBuffer.allocateDirect( (196*196*8*2)-12544 );
+        d.imgData = ByteBuffer.allocateDirect(1 * d.inputSize * d.inputSize * 3 * numBytesPerChannel);
         d.imgData.order(ByteOrder.nativeOrder());
         d.intValues = new int[d.inputSize * d.inputSize];
 
@@ -198,7 +195,7 @@ public class TFLiteObjectDetectionAPIModelMask implements Classifier {
         //outputMap.put(3, numDetections);
         Trace.endSection();
 
-// Here outputMap is changed to fit the Face Mask detector
+        // Here outputMap is changed to fit the Face Mask detector
         Map<Integer, Object> outputMap = new HashMap<>();
         output = new float[1][2];
         outputMap.put(0, output);
@@ -234,7 +231,7 @@ public class TFLiteObjectDetectionAPIModelMask implements Classifier {
         // because on some models, they don't always output the same total number of detections
         // For example, your model's NUM_DETECTIONS = 20, but sometimes it only outputs 16 predictions
         // If you don't use the output's numDetections, you'll get nonsensical data
-        int numDetectionsOutput = 2; // cast from float to integer, use min for safety
+        int numDetectionsOutput = Math.min(NUM_DETECTIONS, (int) numDetections[0]); // cast from float to integer, use min for safety
 
         final ArrayList<Recognition> recognitions = new ArrayList<>(numDetectionsOutput);
         recognitions.add(
