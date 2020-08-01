@@ -97,10 +97,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private static final int TF_OD_API_INPUT_SIZE2 = 196;
     private static final boolean TF_OD_API_IS_QUANTIZED = false;
     private static final String TF_OD_API_MODEL_FILE = "mobile_face_net.tflite";
+
     private static final String TF_OD_API_MASKMODEL_FILE = "mask_detector.tflite";
+    //private static final String TF_OD_API_MASKMODEL_FILE = "mask_model2.tflite";
 
     private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
     private static final String TF_OD_API_LABELS_FILE2 = "file:///android_asset/mask_labelmap.txt";
+    //private static final String TF_OD_API_LABELS_FILE2 = "file:///android_asset/mask_labels2.txt";
+
     private static final DetectorMode MODE = DetectorMode.TF_OD_API;
     // Minimum detection confidence to track a detection.
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
@@ -173,7 +177,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     // Estágios de Detecção
     private enum DetectionStages {
-        Idle,
         FaceDetection,
         FaceRecognition,
         MaskDetection,
@@ -181,7 +184,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         Freedom,
         Jail
     };
-    private DetectionStages currentStage = DetectionStages.Idle;
+    private DetectionStages currentStage;
     private String detectedName;
 
     // Usado no delay entre uma detecção e outra
@@ -194,8 +197,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     //=====================================================================
     // TODO: CONFIGURE AQUI O TIPO DE CAMERA A SER USADA: USB OU EMULADOR
     //=====================================================================
-    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
-    FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
+    FlirInterface.CameraType cameraType = FlirInterface.CameraType.SimulatorOne;    // Testing
+    //FlirInterface.CameraType cameraType = FlirInterface.CameraType.USB;           // Production
 
     //==========================================================
     // TODO: VARIÁVEIS DE CONFIGURAÇÃO - LER DO FIREBASE
@@ -254,7 +257,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     @Override
     public synchronized void onResume() {
-        super.onResume();
+        resetDetection();
         try {
             if (flirInterface != null) {
                 flirInterface.updateContext(this, this);
@@ -273,34 +276,26 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                     timerLoop();
                 }
             }
-        }, 0, 1000);
+        }, 0, 2000);
+        super.onResume();
     }
 
     private void timerLoop() {
         //|| CONTROLA A STATE MACHINE ||\\
         switch (currentStage) {
-            case Idle:
-                if (hasFace) {
-                    currentStage = DetectionStages.FaceDetection;
-                }
-                break;
             case FaceDetection:
-                if (isRecognized) {
-                    askForMask();
-                    maskDelayMillis = System.currentTimeMillis();
+                if (hasFace) {
                     currentStage = DetectionStages.FaceRecognition;
                 }
                 break;
             case FaceRecognition:
-                if (System.currentTimeMillis() - maskDelayMillis >= 3000) {
-                    if (hasMask) {
-                        maskDelayMillis = 0L;
-                        currentStage = DetectionStages.MaskDetection;
-                    }
+                if (isRecognized) {
+                    askForMask();
+                    currentStage = DetectionStages.MaskDetection;
                 }
                 break;
             case MaskDetection:
-                if (temperature > 0) {
+                if (hasMask) {
                     currentStage = DetectionStages.TemperatureRead;
                 }
                 break;
@@ -379,6 +374,15 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                             TF_OD_API_INPUT_SIZE,
                             TF_OD_API_IS_QUANTIZED);
 
+            detectorMask =
+                    TFLiteObjectDetectionAPIModelMask
+                            .create(
+                                    getAssets(),
+                                    TF_OD_API_MASKMODEL_FILE,
+                                    TF_OD_API_LABELS_FILE2,
+                                    TF_OD_API_INPUT_SIZE2,
+                                    TF_OD_API_IS_QUANTIZED);
+
             ConfiguracaoFirebase.loadPeopleData(new ConfiguracaoFirebase.PeopleLoadListener() {
                 @Override
                 public void onComplete(ArrayList<Funcionario> funcionarios) {
@@ -399,14 +403,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 }
             });
 
-            detectorMask =
-                    TFLiteObjectDetectionAPIModelMask
-                            .create(
-                                    getAssets(),
-                                    TF_OD_API_MASKMODEL_FILE,
-                                    TF_OD_API_LABELS_FILE2,
-                                    TF_OD_API_INPUT_SIZE2,
-                                    TF_OD_API_IS_QUANTIZED);
         } catch (final IOException e) {
             e.printStackTrace();
             LOGGER.e(e, "Exception initializing classifier!");
@@ -442,7 +438,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         portraitBmp = Bitmap.createBitmap(targetW, targetH, Config.ARGB_8888);
         faceBmp = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE, TF_OD_API_INPUT_SIZE, Config.ARGB_8888);
-        faceBmp2 = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE2, TF_OD_API_INPUT_SIZE2, Config.ARGB_8888);
+        //faceBmp2 = Bitmap.createBitmap(TF_OD_API_INPUT_SIZE2, TF_OD_API_INPUT_SIZE2, Config.ARGB_8888);
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
@@ -619,7 +615,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         // Go back to IDLE state
         delayMillis = 0L;
         detectedName = "";
-        currentStage = DetectionStages.Idle;
+        currentStage = DetectionStages.FaceDetection;
         hasFace = false;
         hasMask = false;
         isRecognized = false;
@@ -811,12 +807,14 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 List<org.tensorflow.lite.examples.detection.tflitemask.Classifier.Recognition>
                         resultsAux2 = new ArrayList<>();
 
-                resultsAux2 = detectorMask.recognizeImage(faceBmp2);
+                if (isRecognized) {
+                    resultsAux2 = detectorMask.recognizeImage(faceBmp);
 
-                if (resultsAux2.get(0).getTitle().contains("no")) {
-                    hasMask = false;
-                } else {
-                    hasMask = true;
+                    if (resultsAux2.get(0).getTitle().equals("mask")) {
+                        hasMask = true;
+                    } else {
+                        hasMask = false;
+                    }
                 }
 
                 //  final List< Recognition> resultsAux = new ArrayList<>();
@@ -837,7 +835,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 //                            usuarioAtual = true;
                         } else {
                             color = Color.RED;
-                            isRecognized = false;
+                            //isRecognized = false;
                         }
                     }
                 }
