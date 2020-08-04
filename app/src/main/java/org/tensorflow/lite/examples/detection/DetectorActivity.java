@@ -83,6 +83,7 @@ import org.tensorflow.lite.examples.detection.tflite.TFLiteObjectDetectionAPIMod
 import org.tensorflow.lite.examples.detection.tflitemask.Classifier;
 import org.tensorflow.lite.examples.detection.tflitemask.TFLiteObjectDetectionAPIModelMask;
 import org.tensorflow.lite.examples.detection.tracking.MultiBoxTracker;
+import org.tensorflow.lite.examples.detection.WebService.Service;
 
 /**
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
@@ -633,6 +634,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     private void openGate() {
         // TODO: INSIRA AQUI O CÓDIGO DE ABERTURA DA CATRACA/CANCELA
+
+        Service conexao =new Service();
+
+
         Log.d("GATE", "Open Gate");
     }
 
